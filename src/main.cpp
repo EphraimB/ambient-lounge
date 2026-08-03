@@ -27,13 +27,15 @@ struct DashboardState {
     Color glowTint;
 };
 
-// 3D Spatial Friend Anchor & Rig representation
-struct Friend3DAnchor {
+// Character representation
+struct CharacterEntry {
     std::string name;
     std::string tag;
+    std::string glbPath;
+    std::string pngPath;
     Vector3 position;
     Color sigColor;
-    Color hairColor;
+    float rotationY;
 };
 
 // Global thread-safe state and mutex
@@ -68,7 +70,7 @@ Texture2D GeneratePhotoFallbackTexture(int width, int height) {
     return tex;
 }
 
-// 4. SPEECH BUBBLES (High-Contrast Glassmorphic Screen-Space Card Overlay)
+// 4. 2D-OVER-3D GLASSMORPHIC SPEECH BUBBLES (High-Contrast Screen-Space Card)
 void DrawHighContrastSpeechCard(Vector2 pos, std::string speakerName, std::string text, Color sigColor) {
     int fontSize = 22;
     int titleSize = 18;
@@ -101,7 +103,7 @@ void DrawHighContrastSpeechCard(Vector2 pos, std::string speakerName, std::strin
 
     Rectangle cardRect = {
         pos.x - (calculatedWidth / 2.0f),
-        pos.y - calculatedHeight - 40.0f,
+        pos.y - calculatedHeight - 45.0f,
         (float)calculatedWidth,
         (float)calculatedHeight
     };
@@ -110,16 +112,16 @@ void DrawHighContrastSpeechCard(Vector2 pos, std::string speakerName, std::strin
     if (cardRect.x + cardRect.width > 1890.0f) cardRect.x = 1890.0f - cardRect.width;
     if (cardRect.y < 30.0f) cardRect.y = 30.0f;
 
-    // High contrast drop shadow
+    // High-contrast drop shadow
     DrawRectangleRounded(Rectangle{ cardRect.x + 8, cardRect.y + 8, cardRect.width, cardRect.height }, 0.2f, 8, Color{ 0, 0, 0, 160 });
 
-    // High contrast dark-glass card backdrop
+    // Dark glass card backdrop
     DrawRectangleRounded(cardRect, 0.2f, 8, Color{ 12, 16, 28, 245 });
 
     // Glowing border outline
     DrawRectangleRoundedLines(cardRect, 0.2f, 8, 3.0f, ColorAlpha(sigColor, 0.95f));
 
-    // Header badge
+    // Speaker Name Header Badge
     std::string headerStr = speakerName + " says:";
     DrawText(headerStr.c_str(), (int)(cardRect.x + padding), (int)(cardRect.y + padding), titleSize, sigColor);
 
@@ -142,10 +144,10 @@ void BackgroundStateLoop() {
     const std::string jsonPath = "state.json";
 
     std::vector<DashboardState> script = {
-        { "03:58 PM", "72°F Sunset Glow", "Frank", "Sam", "happy", "sharing_photo", "Check out this sunset view from the mountain ridge yesterday!", "assets/photo1.jpg", Color{ 245, 125, 75, 180 } },
-        { "03:58 PM", "72°F Sunset Glow", "Milo", "Sky", "smug", "high_five", "Told you our textured 3D spatial lounge would look like a real room!", "assets/photo1.jpg", Color{ 64, 156, 255, 180 } },
-        { "03:59 PM", "71°F Golden Hour", "Sam", "Frank", "excited", "back_pat", "Awesome capture Frank! The 3D hardwood floor and ambient light glow look incredible!", "assets/photo1.jpg", Color{ 46, 204, 113, 180 } },
-        { "03:59 PM", "71°F Golden Hour", "Sky", "Milo", "panicked", "waving", "Wait, did anyone check the 3D coffee table and skeletal gesture animations?", "assets/photo1.jpg", Color{ 255, 191, 0, 180 } }
+        { "06:37 PM", "72°F Sunset Glow", "Frank", "Sam", "happy", "sharing_photo", "Check out this sunset view from the mountain ridge yesterday!", "assets/photo1.jpg", Color{ 245, 125, 75, 180 } },
+        { "06:37 PM", "72°F Sunset Glow", "Milo", "Sky", "smug", "high_five", "Told you our Nintendo/Pixar 3D lounge would look super stylized!", "assets/photo1.jpg", Color{ 64, 156, 255, 180 } },
+        { "06:38 PM", "71°F Golden Hour", "Sam", "Frank", "excited", "back_pat", "Awesome capture Frank! The physical 3D digital art frame looks amazing!", "assets/photo1.jpg", Color{ 46, 204, 113, 180 } },
+        { "06:38 PM", "71°F Golden Hour", "Sky", "Milo", "panicked", "waving", "Wait, did anyone check the 2D-over-3D glassmorphic speech cards?", "assets/photo1.jpg", Color{ 255, 191, 0, 180 } }
     };
 
     size_t scriptIndex = 0;
@@ -161,13 +163,13 @@ void BackgroundStateLoop() {
                     json j;
                     file >> j;
                     DashboardState newState;
-                    newState.timeStr = j.value("timeStr", "03:58 PM");
+                    newState.timeStr = j.value("timeStr", "06:37 PM");
                     newState.weatherStr = j.value("weatherStr", "72°F Sunset Glow");
                     newState.activeSpeaker = j.value("activeSpeaker", "Frank");
                     newState.targetFriend = j.value("targetFriend", "Sam");
                     newState.emotion = j.value("emotion", "happy");
                     newState.action = j.value("action", "sharing_photo");
-                    newState.dialogueText = j.value("dialogueText", "Hello photorealistic 3D spatial lounge!");
+                    newState.dialogueText = j.value("dialogueText", "Hello stylized 3D lounge!");
                     newState.photoPath = j.value("photoPath", "");
                     newState.glowTint = GetSignatureColor(newState.activeSpeaker);
                     newState.glowTint.a = 180;
@@ -195,96 +197,12 @@ void BackgroundStateLoop() {
     }
 }
 
-// Render 3D Character Model / Rig with Dynamic Forward Kinematics Skeletal Gestures
-void DrawCharacter3DModel(const Friend3DAnchor& friendAnchor, bool isActive, bool isTarget, const DashboardState& state, float globalTime, Vector3 tvPos) {
-    Color skinColor = Color{ 235, 195, 165, 255 };
-
-    // Micro breathing vertical float
-    float breath = sinf(globalTime * 2.2f + friendAnchor.position.x) * 0.05f;
-    Vector3 rootPos = { friendAnchor.position.x, friendAnchor.position.y + breath, friendAnchor.position.z };
-
-    // Torso Base & Outfit
-    Vector3 torsoBottom = { rootPos.x, rootPos.y - 0.4f, rootPos.z };
-    Vector3 torsoTop    = { rootPos.x, rootPos.y + 0.7f, rootPos.z };
-    DrawCapsule(torsoBottom, torsoTop, 0.42f, 12, 12, friendAnchor.sigColor);
-
-    // Active / Target Floor Aura Ring in 3D
-    if (isActive) {
-        float auraPulse = 0.85f + sinf(globalTime * 5.0f) * 0.12f;
-        DrawCircle3D(Vector3{ rootPos.x, rootPos.y - 1.1f, rootPos.z }, auraPulse, Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(friendAnchor.sigColor, 0.7f));
-    } else if (isTarget) {
-        DrawCircle3D(Vector3{ rootPos.x, rootPos.y - 1.1f, rootPos.z }, 0.80f, Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(WHITE, 0.5f));
-    }
-
-    // Head Joint Position & Dynamic Gaze Rotation
-    Vector3 headPos = { rootPos.x, rootPos.y + 1.25f, rootPos.z };
-    
-    Vector3 gazeTargetPos = tvPos;
-    if (state.activeSpeaker != friendAnchor.name) {
-        gazeTargetPos = tvPos; // Gaze toward 3D TV screen by default
-    }
-
-    Vector3 gazeDir = { gazeTargetPos.x - headPos.x, gazeTargetPos.y - headPos.y, gazeTargetPos.z - headPos.z };
-    float dist = sqrtf(gazeDir.x * gazeDir.x + gazeDir.y * gazeDir.y + gazeDir.z * gazeDir.z);
-    if (dist > 0.001f) {
-        gazeDir.x /= dist; gazeDir.y /= dist; gazeDir.z /= dist;
-    }
-
-    // Head Mesh & Hair
-    DrawSphere(headPos, 0.38f, skinColor);
-    DrawSphere(Vector3{ headPos.x, headPos.y + 0.12f, headPos.z }, 0.40f, friendAnchor.hairColor);
-
-    // Eyes / Pupil Gaze Indicators
-    Vector3 leftEye  = { headPos.x - 0.12f + gazeDir.x * 0.28f, headPos.y + 0.04f + gazeDir.y * 0.15f, headPos.z + 0.30f + gazeDir.z * 0.28f };
-    Vector3 rightEye = { headPos.x + 0.12f + gazeDir.x * 0.28f, headPos.y + 0.04f + gazeDir.y * 0.15f, headPos.z + 0.30f + gazeDir.z * 0.28f };
-    DrawSphere(leftEye, 0.06f, WHITE);
-    DrawSphere(rightEye, 0.06f, WHITE);
-    DrawSphere(Vector3{ leftEye.x + gazeDir.x * 0.02f, leftEye.y, leftEye.z + gazeDir.z * 0.02f }, 0.035f, friendAnchor.sigColor);
-    DrawSphere(Vector3{ rightEye.x + gazeDir.x * 0.02f, rightEye.y, rightEye.z + gazeDir.z * 0.02f }, 0.035f, friendAnchor.sigColor);
-
-    // -------------------------------------------------------------
-    // FORWARD KINEMATICS SKELETAL ARMS & GESTURES
-    // -------------------------------------------------------------
-    Vector3 rShoulder = { rootPos.x + 0.52f, rootPos.y + 0.55f, rootPos.z };
-    Vector3 lShoulder = { rootPos.x - 0.52f, rootPos.y + 0.55f, rootPos.z };
-
-    Vector3 rHandPos = { rShoulder.x + 0.15f, rShoulder.y - 0.60f, rShoulder.z + 0.1f };
-    Vector3 lHandPos = { lShoulder.x - 0.15f, lShoulder.y - 0.60f, lShoulder.z + 0.1f };
-
-    if (isActive) {
-        if (state.action == "sharing_photo") {
-            rHandPos = { rShoulder.x + 0.10f, rShoulder.y + 0.10f, rShoulder.z - 1.20f };
-        }
-        else if (state.action == "high_five") {
-            rHandPos = { rShoulder.x + 0.25f, rShoulder.y + 0.85f, rShoulder.z - 0.20f };
-        }
-        else if (state.action == "back_pat") {
-            rHandPos = { rShoulder.x + 0.40f, rShoulder.y + 0.20f, rShoulder.z - 0.80f };
-        }
-        else if (state.action == "waving") {
-            float sway = sinf(globalTime * 6.0f) * 0.35f;
-            rHandPos = { rShoulder.x + 0.20f + sway, rShoulder.y + 0.90f, rShoulder.z - 0.10f };
-        }
-    }
-
-    // Right & Left Arm Segments
-    Vector3 rElbow = { (rShoulder.x + rHandPos.x) * 0.5f, (rShoulder.y + rHandPos.y) * 0.5f - 0.1f, (rShoulder.z + rHandPos.z) * 0.5f };
-    DrawCylinderEx(rShoulder, rElbow, 0.12f, 0.10f, 10, friendAnchor.sigColor);
-    DrawCylinderEx(rElbow, rHandPos, 0.10f, 0.08f, 10, friendAnchor.sigColor);
-    DrawSphere(rHandPos, 0.10f, skinColor);
-
-    Vector3 lElbow = { (lShoulder.x + lHandPos.x) * 0.5f, (lShoulder.y + lHandPos.y) * 0.5f - 0.05f, (lShoulder.z + lHandPos.z) * 0.5f };
-    DrawCylinderEx(lShoulder, lElbow, 0.12f, 0.10f, 10, friendAnchor.sigColor);
-    DrawCylinderEx(lElbow, lHandPos, 0.10f, 0.08f, 10, friendAnchor.sigColor);
-    DrawSphere(lHandPos, 0.10f, skinColor);
-}
-
 int main() {
     const int CANVAS_WIDTH = 1920;
     const int CANVAS_HEIGHT = 1080;
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
-    InitWindow(1280, 720, "Ambient Lounge - Photorealistic 3D Spatial Canvas");
+    InitWindow(1280, 720, "Ambient Lounge - Stylized 3D Nintendo/Pixar Aesthetic");
     SetTargetFPS(60);
 
     // Virtual 1080p Viewport Target
@@ -302,7 +220,7 @@ int main() {
     // Initial state setup
     {
         std::lock_guard<std::mutex> lock(g_StateMutex);
-        g_State.timeStr = "03:58 PM";
+        g_State.timeStr = "06:37 PM";
         g_State.weatherStr = "72°F Sunset Glow";
         g_State.activeSpeaker = "Frank";
         g_State.targetFriend = "Sam";
@@ -316,29 +234,66 @@ int main() {
     // Launch background thread
     std::thread bgThread(BackgroundStateLoop);
 
-    // Load 3D Room Textures
+    // Load Room Environment Textures
     Texture2D floorTex = std::filesystem::exists("assets/3d/floor_diffuse.png") ? LoadTexture("assets/3d/floor_diffuse.png") : GeneratePhotoFallbackTexture(1024, 1024);
     Texture2D wallTex  = std::filesystem::exists("assets/3d/wall_diffuse.png") ? LoadTexture("assets/3d/wall_diffuse.png") : GeneratePhotoFallbackTexture(1024, 1024);
     Texture2D activePhotoTex = GeneratePhotoFallbackTexture(1920, 1080);
 
-    // Build 3D Floor Plane Model & Material Texture
+    // Build 3D Floor Plane Model
     Mesh floorMesh = GenMeshPlane(24.0f, 24.0f, 1, 1);
     Model floorModel = LoadModelFromMesh(floorMesh);
     SetMaterialTexture(&floorModel.materials[0], MATERIAL_MAP_DIFFUSE, floorTex);
 
-    // Build 3D Back Wall Model & Material Texture
+    // Build 3D Back Wall Model
     Mesh wallMesh = GenMeshPlane(24.0f, 12.0f, 1, 1);
     Model wallModel = LoadModelFromMesh(wallMesh);
     SetMaterialTexture(&wallModel.materials[0], MATERIAL_MAP_DIFFUSE, wallTex);
 
-    std::vector<Friend3DAnchor> anchors3D = {
-        { "Frank", "📸", Vector3{ 0.0f, 1.6f, -2.4f }, GetSignatureColor("Frank"), Color{ 50, 40, 35, 255 } }, // TOP
-        { "Sam",   "🚆", Vector3{ 0.0f, -1.6f, 2.4f }, GetSignatureColor("Sam"),   Color{ 70, 50, 30, 255 } }, // BOTTOM
-        { "Sky",   "☀️", Vector3{ -4.6f, 0.0f, 0.0f }, GetSignatureColor("Sky"),   Color{ 200, 160, 60, 255 } },// LEFT
-        { "Milo",  "⚡", Vector3{ 4.6f, 0.0f, 0.0f }, GetSignatureColor("Milo"),  Color{ 30, 35, 50, 255 } }  // RIGHT
+    // 3. STYLIZED 3D CHARACTER MODELS (.glb) & 2.5D BILLBOARD FALLBACKS
+    std::vector<CharacterEntry> characters = {
+        { "Frank", "📸", "assets/models/frank.glb", "assets/models/frank.png", Vector3{ 0.0f, 1.5f, -2.4f }, GetSignatureColor("Frank"), 0.0f },   // TOP (facing center)
+        { "Sam",   "🚆", "assets/models/sam.glb",   "assets/models/sam.png",   Vector3{ 0.0f, -1.5f, 2.4f }, GetSignatureColor("Sam"),   180.0f }, // BOTTOM (facing center)
+        { "Sky",   "☀️", "assets/models/sky.glb",   "assets/models/sky.png",   Vector3{ -4.6f, 0.0f, 0.0f }, GetSignatureColor("Sky"),   90.0f },  // LEFT (facing center)
+        { "Milo",  "⚡", "assets/models/milo.glb",  "assets/models/milo.png",  Vector3{ 4.6f, 0.0f, 0.0f },  GetSignatureColor("Milo"),  -90.0f }  // RIGHT (facing center)
     };
 
-    Vector3 centerPhotoPlanePos = { 0.0f, 1.2f, -4.8f };
+    // Load GLTF Models & Animations
+    Model frankModel = LoadModel("assets/models/frank.glb");
+    Model miloModel  = LoadModel("assets/models/milo.glb");
+    Model samModel    = LoadModel("assets/models/sam.glb");
+    Model skyModel    = LoadModel("assets/models/sky.glb");
+
+    std::map<std::string, Model> modelMap = {
+        { "Frank", frankModel },
+        { "Milo",  miloModel },
+        { "Sam",   samModel },
+        { "Sky",   skyModel }
+    };
+
+    std::map<std::string, ModelAnimation*> animMap;
+    std::map<std::string, int> animCountMap;
+    std::map<std::string, int> animFrameMap;
+
+    for (const auto& c : characters) {
+        int count = 0;
+        ModelAnimation* anims = LoadModelAnimations(c.glbPath.c_str(), &count);
+        animMap[c.name] = anims;
+        animCountMap[c.name] = count;
+        animFrameMap[c.name] = 0;
+    }
+
+    // Load 2.5D Fallback Billboard Textures
+    std::map<std::string, Texture2D> billboardTexMap;
+    for (const auto& c : characters) {
+        if (std::filesystem::exists(c.pngPath)) {
+            billboardTexMap[c.name] = LoadTexture(c.pngPath.c_str());
+        } else {
+            billboardTexMap[c.name] = GeneratePhotoFallbackTexture(256, 256);
+        }
+    }
+
+    // 2. CENTER PHOTO FRAME (16:9 3D Quad mounted on back wall above coffee table)
+    Vector3 centerPhotoPlanePos = { 0.0f, 1.5f, -4.8f };
     Vector3 coffeeTablePos     = { 0.0f, -1.2f, 0.0f };
 
     float globalTime = 0.0f;
@@ -354,8 +309,16 @@ int main() {
             localState = g_State;
         }
 
+        // Skeletal Animation Playback (UpdateModelAnimation)
+        for (const auto& c : characters) {
+            if (animCountMap[c.name] > 0 && animMap[c.name] != nullptr) {
+                animFrameMap[c.name] = (animFrameMap[c.name] + 1) % animMap[c.name][0].frameCount;
+                UpdateModelAnimation(modelMap[c.name], animMap[c.name][0], animFrameMap[c.name]);
+            }
+        }
+
         // -------------------------------------------------------------
-        // RENDER 3D SPATIAL SCENE & 2D HUD OVERLAY
+        // RENDER 3D SPATIAL CANVAS
         // -------------------------------------------------------------
         BeginTextureMode(target);
             ClearBackground(Color{ 10, 14, 24, 255 });
@@ -363,69 +326,56 @@ int main() {
             // Begin 3D Scene Rendering
             BeginMode3D(camera);
 
-                // 1. 3D HARDWOOD/SLATE FLOOR PLANE
+                // 1. CLEAN 3D ENVIRONMENT (NO DEBUG GRID/CAPSULES)
+                // Dark slate floor plane
                 DrawModel(floorModel, Vector3{ 0.0f, -1.8f, 0.0f }, 1.0f, WHITE);
 
-                // 2. 3D LOUNGE BACK WALL (Rotated vertical at Z = -5.0)
+                // Dark wood back wall plane
                 DrawModelEx(wallModel, Vector3{ 0.0f, 3.2f, -5.0f }, Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, Vector3{ 1.0f, 1.0f, 1.0f }, WHITE);
 
-                // 3. 3D WOODEN COFFEE TABLE IN CENTER LOUNGE
+                // 3D Wooden Coffee Table in center lounge
                 DrawCube(coffeeTablePos, 3.5f, 0.4f, 2.0f, Color{ 65, 42, 28, 255 });
                 DrawCubeWires(coffeeTablePos, 3.55f, 0.42f, 2.05f, Color{ 110, 80, 50, 255 });
-                // Table Legs
                 DrawCylinder(Vector3{ -1.5f, -1.5f, -0.8f }, 0.08f, 0.08f, 0.6f, 8, Color{ 35, 25, 20, 255 });
                 DrawCylinder(Vector3{  1.5f, -1.5f, -0.8f }, 0.08f, 0.08f, 0.6f, 8, Color{ 35, 25, 20, 255 });
                 DrawCylinder(Vector3{ -1.5f, -1.5f,  0.8f }, 0.08f, 0.08f, 0.6f, 8, Color{ 35, 25, 20, 255 });
                 DrawCylinder(Vector3{  1.5f, -1.5f,  0.8f }, 0.08f, 0.08f, 0.6f, 8, Color{ 35, 25, 20, 255 });
 
-                // 4. AMBIENT POINT LIGHT GLOW BEHIND 3D TV
-                float pulseGlow = (sinf(globalTime * 3.0f) + 1.0f) * 0.5f;
-                DrawSphere(Vector3{ centerPhotoPlanePos.x, centerPhotoPlanePos.y, centerPhotoPlanePos.z - 0.2f },
-                           3.8f + pulseGlow * 0.2f, ColorAlpha(localState.glowTint, 0.32f));
-
-                // 5. CENTER 3D TV DISPLAY (Textured Quad & Bezel Frame)
-                // Metallic Bezel Frame
+                // 2. CENTER PHOTO FRAME (16:9 Vertical 3D Quad & Bezel Geometry)
+                // Dark wooden bezel frame geometry
                 DrawCube(centerPhotoPlanePos, 6.3f, 3.675f, 0.12f, Color{ 16, 22, 34, 255 });
                 DrawCubeWires(centerPhotoPlanePos, 6.35f, 3.725f, 0.14f, Color{ 140, 160, 190, 255 });
 
-                // Textured 3D Photo Plane Quad facing camera
+                // Render active photo onto 16:9 3D Quad Plane
                 DrawPlane(Vector3{ centerPhotoPlanePos.x, centerPhotoPlanePos.y, centerPhotoPlanePos.z + 0.07f },
                           Vector2{ 6.0f, 3.375f }, WHITE);
 
-                // 6. 4 TEXTURED 3D CHARACTER MODELS
-                for (const auto& friendAnchor : anchors3D) {
-                    bool isActive = (friendAnchor.name == localState.activeSpeaker);
-                    bool isTarget = (friendAnchor.name == localState.targetFriend);
+                // 3. STYLIZED 3D CHARACTER MODELS & 2.5D BILLBOARD FALLBACKS
+                for (const auto& c : characters) {
+                    bool isActive = (c.name == localState.activeSpeaker);
+                    bool isTarget = (c.name == localState.targetFriend);
 
-                    DrawCharacter3DModel(friendAnchor, isActive, isTarget, localState, globalTime, centerPhotoPlanePos);
-                }
+                    // Micro breathing float motion
+                    float breath = sinf(globalTime * 2.2f + c.position.x) * 0.05f;
+                    Vector3 charPos = { c.position.x, c.position.y + breath, c.position.z };
 
-                // 7. 3D SPATIAL ENERGY BEAM BETWEEN ACTIVE SPEAKER & TARGET
-                Vector3 senderPos3D = { 0, 0, 0 };
-                Vector3 targetPos3D = centerPhotoPlanePos;
-                Color activeColor = GetSignatureColor(localState.activeSpeaker);
+                    Model model = modelMap[c.name];
 
-                for (const auto& a : anchors3D) {
-                    if (a.name == localState.activeSpeaker) senderPos3D = a.position;
-                    if (a.name == localState.targetFriend)  targetPos3D = a.position;
-                }
-                if (localState.targetFriend == "Center") targetPos3D = centerPhotoPlanePos;
-
-                if (senderPos3D.x != 0 || senderPos3D.y != 0 || senderPos3D.z != 0) {
-                    DrawLine3D(senderPos3D, targetPos3D, ColorAlpha(activeColor, 0.75f));
-                    float progress = fmodf(globalTime * 0.6f, 1.0f);
-                    Vector3 beadPos3D = {
-                        senderPos3D.x + (targetPos3D.x - senderPos3D.x) * progress,
-                        senderPos3D.y + (targetPos3D.y - senderPos3D.y) * progress,
-                        senderPos3D.z + (targetPos3D.z - senderPos3D.z) * progress
-                    };
-                    DrawSphere(beadPos3D, 0.15f, activeColor);
+                    if (IsModelReady(model) && model.meshCount > 0) {
+                        // Render GLTF 3D Model facing center photo frame
+                        DrawModelEx(model, charPos, Vector3{ 0.0f, 1.0f, 0.0f }, c.rotationY, Vector3{ 1.0f, 1.0f, 1.0f }, c.sigColor);
+                    } else {
+                        // FALLBACK: Render smooth 2.5D billboard sprite using stylized PNG
+                        Texture2D billTex = billboardTexMap[c.name];
+                        Rectangle srcRec = { 0, 0, (float)billTex.width, (float)billTex.height };
+                        DrawBillboardRec(camera, billTex, srcRec, charPos, Vector2{ 2.2f, 2.2f }, WHITE);
+                    }
                 }
 
             EndMode3D();
 
             // ---------------------------------------------------------
-            // 2D GLASSMORPHIC HUD SPEECH CARDS (GetWorldToScreen Tracking)
+            // 4. 2D-OVER-3D GLASSMORPHIC SPEECH BUBBLES
             // ---------------------------------------------------------
             
             // Top Center Clock Badge
@@ -437,6 +387,7 @@ int main() {
             DrawText(clockText.c_str(), (int)(CANVAS_WIDTH / 2.0f - clockTextW / 2.0f), (int)(clockRect.y + 12.0f), 18, Color{ 245, 248, 255, 255 });
 
             // Action Badge at bottom center
+            Color activeColor = GetSignatureColor(localState.activeSpeaker);
             std::string actionBadge = "[" + localState.emotion + "] " + localState.action;
             Rectangle actionRect = { CANVAS_WIDTH / 2.0f - 160.0f, CANVAS_HEIGHT - 75.0f, 320.0f, 36.0f };
             DrawRectangleRounded(actionRect, 0.45f, 6, Color{ 12, 16, 28, 235 });
@@ -444,28 +395,28 @@ int main() {
             int actionTextW = MeasureText(actionBadge.c_str(), 16);
             DrawText(actionBadge.c_str(), (int)(CANVAS_WIDTH / 2.0f - actionTextW / 2.0f), (int)(actionRect.y + 9.0f), 16, Color{ 245, 248, 255, 255 });
 
-            // Project 3D character head coordinates to 2D screen space for speech cards
-            for (const auto& a : anchors3D) {
-                Vector3 headWorldPos = { a.position.x, a.position.y + 1.6f, a.position.z };
+            // Convert 3D head positions to 2D screen space for glassmorphic speech cards
+            for (const auto& c : characters) {
+                Vector3 headWorldPos = { c.position.x, c.position.y + 1.4f, c.position.z };
                 Vector2 screenPos = GetWorldToScreen(headWorldPos, camera);
 
-                if (a.name == localState.activeSpeaker && !localState.dialogueText.empty()) {
-                    DrawHighContrastSpeechCard(screenPos, a.name, localState.dialogueText, activeColor);
+                if (c.name == localState.activeSpeaker && !localState.dialogueText.empty()) {
+                    DrawHighContrastSpeechCard(screenPos, c.name, localState.dialogueText, activeColor);
                 }
 
-                // High-contrast 2D Character Tag
-                std::string tagText = a.name + " " + a.tag;
+                // 2D Character Tag
+                std::string tagText = c.name + " " + c.tag;
                 int tagW = MeasureText(tagText.c_str(), 16);
-                Vector3 tagWorldPos = { a.position.x, a.position.y - 1.2f, a.position.z };
+                Vector3 tagWorldPos = { c.position.x, c.position.y - 1.2f, c.position.z };
                 Vector2 tagScreenPos = GetWorldToScreen(tagWorldPos, camera);
                 Rectangle tagRect = { tagScreenPos.x - (tagW / 2.0f) - 10, tagScreenPos.y, (float)tagW + 20, 26 };
                 DrawRectangleRounded(tagRect, 0.45f, 4, Color{ 12, 16, 28, 220 });
-                DrawRectangleRoundedLines(tagRect, 0.45f, 4, 1.2f, ColorAlpha(a.sigColor, 0.8f));
+                DrawRectangleRoundedLines(tagRect, 0.45f, 4, 1.2f, ColorAlpha(c.sigColor, 0.8f));
                 DrawText(tagText.c_str(), (int)(tagScreenPos.x - tagW / 2.0f), (int)(tagRect.y + 4), 16, WHITE);
             }
 
-            // Pi 4 Performance Status Footer
-            DrawText("Photorealistic 3D Spatial Room | 3D Hardwood Floor, 3D Wall & Coffee Table", 25, CANVAS_HEIGHT - 35, 16, Color{ 160, 180, 210, 180 });
+            // Status Bar
+            DrawText("Stylized 3D Nintendo/Pixar Aesthetic | GLTF .glb Models & 2.5D Billboard Fallbacks", 25, CANVAS_HEIGHT - 35, 16, Color{ 160, 180, 210, 180 });
 
         EndTextureMode();
 
@@ -503,6 +454,17 @@ int main() {
     UnloadTexture(activePhotoTex);
     UnloadModel(floorModel);
     UnloadModel(wallModel);
+    for (auto& pair : modelMap) {
+        if (IsModelReady(pair.second)) UnloadModel(pair.second);
+    }
+    for (auto& pair : animMap) {
+        if (pair.second != nullptr && animCountMap[pair.first] > 0) {
+            UnloadModelAnimations(pair.second, animCountMap[pair.first]);
+        }
+    }
+    for (auto& pair : billboardTexMap) {
+        UnloadTexture(pair.second);
+    }
     UnloadRenderTexture(target);
     CloseWindow();
 

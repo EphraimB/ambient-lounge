@@ -143,10 +143,10 @@ void BackgroundStateLoop() {
     const std::string jsonPath = "state.json";
 
     std::vector<DashboardState> script = {
-        { "07:32 PM", "72°F Sunset Glow", "Frank", "Sam", "happy", "sharing_photo", "Check out this sunset view from the mountain ridge yesterday!", "assets/photo1.jpg", Color{ 245, 125, 75, 180 } },
-        { "07:32 PM", "72°F Sunset Glow", "Milo", "Sky", "smug", "high_five", "Our 2D animated billboard sprites look super clean inside the 3D lounge!", "assets/photo1.jpg", Color{ 64, 156, 255, 180 } },
-        { "07:33 PM", "71°F Golden Hour", "Sam", "Frank", "excited", "back_pat", "Awesome capture Frank! The 3x3 sprite sheet animation loop looks fantastic!", "assets/photo1.jpg", Color{ 46, 204, 113, 180 } },
-        { "07:33 PM", "71°F Golden Hour", "Sky", "Milo", "panicked", "waving", "Wait, did anyone check the 2D-over-3D billboard speech card tracking?", "assets/photo1.jpg", Color{ 255, 191, 0, 180 } }
+        { "07:37 PM", "72°F Sunset Glow", "Frank", "Sam", "happy", "sharing_photo", "Check out this sunset view from the mountain ridge yesterday!", "assets/photo1.jpg", Color{ 245, 125, 75, 180 } },
+        { "07:37 PM", "72°F Sunset Glow", "Milo", "Sky", "smug", "high_five", "Our 2D animated billboard sprites sit perfectly flush on the stone floor!", "assets/photo1.jpg", Color{ 64, 156, 255, 180 } },
+        { "07:38 PM", "71°F Golden Hour", "Sam", "Frank", "excited", "back_pat", "Awesome capture Frank! The active photo on the 16:9 wall frame looks stunning!", "assets/photo1.jpg", Color{ 46, 204, 113, 180 } },
+        { "07:38 PM", "71°F Golden Hour", "Sky", "Milo", "panicked", "waving", "All debug bounding wireframes removed! Clean photorealistic spatial lounge!", "assets/photo1.jpg", Color{ 255, 191, 0, 180 } }
     };
 
     size_t scriptIndex = 0;
@@ -162,7 +162,7 @@ void BackgroundStateLoop() {
                     json j;
                     file >> j;
                     DashboardState newState;
-                    newState.timeStr = j.value("timeStr", "07:32 PM");
+                    newState.timeStr = j.value("timeStr", "07:37 PM");
                     newState.weatherStr = j.value("weatherStr", "72°F Sunset Glow");
                     newState.activeSpeaker = j.value("activeSpeaker", "Frank");
                     newState.targetFriend = j.value("targetFriend", "Sam");
@@ -201,7 +201,7 @@ int main() {
     const int CANVAS_HEIGHT = 1080;
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
-    InitWindow(1280, 720, "Ambient Lounge - Animated 2D Billboard Sprite Sheets");
+    InitWindow(1280, 720, "Ambient Lounge - Clean 2D Billboard Canvas");
     SetTargetFPS(60);
 
     // Virtual 1080p Viewport Target
@@ -219,7 +219,7 @@ int main() {
     // Initial state setup
     {
         std::lock_guard<std::mutex> lock(g_StateMutex);
-        g_State.timeStr = "07:32 PM";
+        g_State.timeStr = "07:37 PM";
         g_State.weatherStr = "72°F Sunset Glow";
         g_State.activeSpeaker = "Frank";
         g_State.targetFriend = "Sam";
@@ -236,6 +236,7 @@ int main() {
     // Load Room Environment Textures
     Texture2D floorTex = std::filesystem::exists("assets/3d/floor_diffuse.png") ? LoadTexture("assets/3d/floor_diffuse.png") : GeneratePhotoFallbackTexture(1024, 1024);
     Texture2D wallTex  = std::filesystem::exists("assets/3d/wall_diffuse.png") ? LoadTexture("assets/3d/wall_diffuse.png") : GeneratePhotoFallbackTexture(1024, 1024);
+    Texture2D activePhotoTex = GeneratePhotoFallbackTexture(1920, 1080);
 
     // Build 3D Floor Plane Model
     Mesh floorMesh = GenMeshPlane(24.0f, 24.0f, 1, 1);
@@ -247,24 +248,30 @@ int main() {
     Model wallModel = LoadModelFromMesh(wallMesh);
     SetMaterialTexture(&wallModel.materials[0], MATERIAL_MAP_DIFFUSE, wallTex);
 
-    // 1. SPRITE SHEET ASSET LOADING (3x3 grid transparent PNG sheets from assets/sprites/)
+    // 3. CLEAN UP CENTER PHOTO FRAME: 16:9 3D Wall Plane Model for Active Photo Texture
+    Mesh photoMesh = GenMeshPlane(6.0f, 3.375f, 1, 1);
+    Model photoModel = LoadModelFromMesh(photoMesh);
+    SetMaterialTexture(&photoModel.materials[0], MATERIAL_MAP_DIFFUSE, activePhotoTex);
+
+    // 1. SPRITE SHEET ASSET LOADING (3x3 grid transparent PNG sheets)
     Texture2D frankSheet = LoadTexture("assets/sprites/frank_spritesheet.png");
     Texture2D miloSheet  = LoadTexture("assets/sprites/milo_spritesheet.png");
     Texture2D samSheet   = LoadTexture("assets/sprites/sam_spritesheet.png");
     Texture2D skySheet   = LoadTexture("assets/sprites/sky_spritesheet.png");
 
+    // 2. FIX CHARACTER FLOOR ANCHORING & SCALE (Floor Y = -1.8f, Billboard Y center = -0.45f for 2.7f height)
     std::vector<CharacterSpriteEntry> characterSprites = {
-        { "Frank", "📸", "assets/sprites/frank_spritesheet.png", frankSheet, Vector3{ 0.0f, 1.3f, -2.4f }, GetSignatureColor("Frank") },   // TOP
-        { "Sam",   "🚆", "assets/sprites/sam_spritesheet.png",   samSheet,   Vector3{ 0.0f, -0.6f, 2.4f }, GetSignatureColor("Sam")   },   // BOTTOM
-        { "Sky",   "☀️", "assets/sprites/sky_spritesheet.png",   skySheet,   Vector3{ -4.6f, 0.4f, 0.0f }, GetSignatureColor("Sky")   },   // LEFT
-        { "Milo",  "⚡", "assets/sprites/milo_spritesheet.png",  miloSheet,  Vector3{ 4.6f, 0.4f, 0.0f },  GetSignatureColor("Milo")  }    // RIGHT
+        { "Frank", "📸", "assets/sprites/frank_spritesheet.png", frankSheet, Vector3{  0.0f, -0.45f, -2.5f }, GetSignatureColor("Frank") }, // TOP (behind table)
+        { "Sam",   "🚆", "assets/sprites/sam_spritesheet.png",   samSheet,   Vector3{  0.0f, -0.45f,  2.2f }, GetSignatureColor("Sam")   }, // BOTTOM (in front)
+        { "Sky",   "☀️", "assets/sprites/sky_spritesheet.png",   skySheet,   Vector3{ -4.2f, -0.45f,  0.0f }, GetSignatureColor("Sky")   }, // LEFT (beside table)
+        { "Milo",  "⚡", "assets/sprites/milo_spritesheet.png",  miloSheet,  Vector3{  4.2f, -0.45f,  0.0f }, GetSignatureColor("Milo")  }  // RIGHT (beside table)
     };
 
     // Center Photo Frame Position
     Vector3 centerPhotoPlanePos = { 0.0f, 1.5f, -4.8f };
     Vector3 coffeeTablePos     = { 0.0f, -1.2f, 0.0f };
 
-    // 2. ANIMATION FRAME CONTROLLER
+    // ANIMATION FRAME CONTROLLER
     float animTimer = 0.0f;
     int currentFrame = 0;
     float globalTime = 0.0f;
@@ -300,27 +307,25 @@ int main() {
                 DrawModel(floorModel, Vector3{ 0.0f, -1.8f, 0.0f }, 1.0f, WHITE);
                 DrawModelEx(wallModel, Vector3{ 0.0f, 3.2f, -5.0f }, Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, Vector3{ 1.0f, 1.0f, 1.0f }, WHITE);
 
-                // 3D Wooden Coffee Table
+                // 3D Wooden Coffee Table (Clean rendering - NO wireframes)
                 DrawCube(coffeeTablePos, 3.5f, 0.4f, 2.0f, Color{ 65, 42, 28, 255 });
-                DrawCubeWires(coffeeTablePos, 3.55f, 0.42f, 2.05f, Color{ 110, 80, 50, 255 });
                 DrawCylinder(Vector3{ -1.5f, -1.5f, -0.8f }, 0.08f, 0.08f, 0.6f, 8, Color{ 35, 25, 20, 255 });
                 DrawCylinder(Vector3{  1.5f, -1.5f, -0.8f }, 0.08f, 0.08f, 0.6f, 8, Color{ 35, 25, 20, 255 });
                 DrawCylinder(Vector3{ -1.5f, -1.5f,  0.8f }, 0.08f, 0.08f, 0.6f, 8, Color{ 35, 25, 20, 255 });
                 DrawCylinder(Vector3{  1.5f, -1.5f,  0.8f }, 0.08f, 0.08f, 0.6f, 8, Color{ 35, 25, 20, 255 });
 
-                // Center 16:9 3D Photo Quad Display with Wooden Bezel Frame
+                // 3. CLEAN UP CENTER PHOTO FRAME: 16:9 3D Wall Plane displaying active photo texture (NO wireframes)
                 DrawCube(centerPhotoPlanePos, 6.3f, 3.675f, 0.12f, Color{ 16, 22, 34, 255 });
-                DrawCubeWires(centerPhotoPlanePos, 6.35f, 3.725f, 0.14f, Color{ 140, 160, 190, 255 });
-                DrawPlane(Vector3{ centerPhotoPlanePos.x, centerPhotoPlanePos.y, centerPhotoPlanePos.z + 0.07f },
-                          Vector2{ 6.0f, 3.375f }, WHITE);
+                DrawModelEx(photoModel, Vector3{ centerPhotoPlanePos.x, centerPhotoPlanePos.y, centerPhotoPlanePos.z + 0.07f },
+                            Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, Vector3{ 1.0f, 1.0f, 1.0f }, WHITE);
 
-                // 3. 3D BILLBOARD RENDERING PASS (DrawBillboardRec)
+                // 3D BILLBOARD RENDERING PASS (DrawBillboardRec with standardized 1.8f x 2.7f scale)
                 for (const auto& c : characterSprites) {
                     bool isActive = (c.name == localState.activeSpeaker);
                     bool isTarget = (c.name == localState.targetFriend);
 
                     // Micro breathing motion
-                    float breath = sinf(globalTime * 2.2f + c.position3D.x) * 0.05f;
+                    float breath = sinf(globalTime * 2.2f + c.position3D.x) * 0.04f;
                     Vector3 billboardPos = { c.position3D.x, c.position3D.y + breath, c.position3D.z };
 
                     // Calculate source cropping rectangle (3x3 grid)
@@ -333,16 +338,8 @@ int main() {
                         frameHeight
                     };
 
-                    // Active / Target aura rings on floor
-                    if (isActive) {
-                        float pulseR = 0.95f + sinf(globalTime * 5.0f) * 0.12f;
-                        DrawCircle3D(Vector3{ billboardPos.x, billboardPos.y - 1.15f, billboardPos.z }, pulseR, Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(c.sigColor, 0.75f));
-                    } else if (isTarget) {
-                        DrawCircle3D(Vector3{ billboardPos.x, billboardPos.y - 1.15f, billboardPos.z }, 0.85f, Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(WHITE, 0.5f));
-                    }
-
-                    // Render 2D Animated Billboard Sprite in 3D Space
-                    DrawBillboardRec(camera, c.sheetTexture, sourceRec, billboardPos, Vector2{ 2.0f, 2.5f }, WHITE);
+                    // Standardized 2D Billboard in 3D Space (Flush on Y = -1.8f floor)
+                    DrawBillboardRec(camera, c.sheetTexture, sourceRec, billboardPos, Vector2{ 1.8f, 2.7f }, WHITE);
                 }
 
             EndMode3D();
@@ -370,7 +367,7 @@ int main() {
 
             // Position glassmorphic dialogue cards directly above 3D billboard head coordinates
             for (const auto& c : characterSprites) {
-                Vector3 headWorldPos = { c.position3D.x, c.position3D.y + 1.25f, c.position3D.z };
+                Vector3 headWorldPos = { c.position3D.x, c.position3D.y + 1.35f, c.position3D.z };
                 Vector2 screenPos = GetWorldToScreen(headWorldPos, camera);
 
                 if (c.name == localState.activeSpeaker && !localState.dialogueText.empty()) {
@@ -380,7 +377,7 @@ int main() {
                 // 2D Character Tag
                 std::string tagText = c.name + " " + c.tag;
                 int tagW = MeasureText(tagText.c_str(), 16);
-                Vector3 tagWorldPos = { c.position3D.x, c.position3D.y - 1.2f, c.position3D.z };
+                Vector3 tagWorldPos = { c.position3D.x, c.position3D.y - 1.4f, c.position3D.z };
                 Vector2 tagScreenPos = GetWorldToScreen(tagWorldPos, camera);
                 Rectangle tagRect = { tagScreenPos.x - (tagW / 2.0f) - 10, tagScreenPos.y, (float)tagW + 20, 26 };
                 DrawRectangleRounded(tagRect, 0.45f, 4, Color{ 12, 16, 28, 220 });
@@ -389,7 +386,7 @@ int main() {
             }
 
             // Status Bar
-            DrawText("Animated 2D Billboard Sprite Sheets (3x3 Grid) | DrawBillboardRec Rendering Pass", 25, CANVAS_HEIGHT - 35, 16, Color{ 160, 180, 210, 180 });
+            DrawText("Clean 2D Billboard Canvas | Floor Anchored (Y = -1.8f) | 16:9 Active Photo Frame", 25, CANVAS_HEIGHT - 35, 16, Color{ 160, 180, 210, 180 });
 
         EndTextureMode();
 
@@ -424,12 +421,14 @@ int main() {
     // Cleanup resources
     UnloadTexture(floorTex);
     UnloadTexture(wallTex);
+    UnloadTexture(activePhotoTex);
     UnloadTexture(frankSheet);
     UnloadTexture(miloSheet);
     UnloadTexture(samSheet);
     UnloadTexture(skySheet);
     UnloadModel(floorModel);
     UnloadModel(wallModel);
+    UnloadModel(photoModel);
     UnloadRenderTexture(target);
     CloseWindow();
 

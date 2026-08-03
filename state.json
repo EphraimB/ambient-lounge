@@ -1,0 +1,10 @@
+{
+  "timeStr": "03:28 PM",
+  "weatherStr": "72°F Sunset Glow",
+  "activeSpeaker": "Frank",
+  "targetFriend": "Sam",
+  "emotion": "excited",
+  "action": "sharing photo",
+  "dialogueText": "Hey everyone! Check out this sunset shot from the hike yesterday! Isn't it amazing?",
+  "photoPath": "sample_photo.jpg"
+}

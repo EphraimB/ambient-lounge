@@ -1,0 +1,26 @@
+# Build directories & binaries
+build/
+bin/
+obj/
+out/
+*.exe
+ambient_lounge.exe
+
+# Dependencies & Vendors
+vendor/raylib.zip
+vendor/raylib_tmp/
+vendor/
+
+# IDE & Editor files
+.vs/
+.vscode/
+*.vcxproj*
+*.sln
+CMakeSettings.json
+.idea/
+*.user
+
+# OS generated files
+Thumbs.db
+Desktop.ini
+.DS_Store

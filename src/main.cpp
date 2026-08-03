@@ -28,17 +28,6 @@ struct DashboardState {
     Color glowTint;
 };
 
-// Character Sprite Sheet & Spatial Position Entry
-struct CharacterSpriteEntry {
-    std::string name;
-    std::string tag;
-    std::string spriteSheetPath;
-    Texture2D sheetTexture;
-    Vector3 position3D;
-    Color sigColor;
-    bool flipX; // Horizontal flip for eye contact mirroring
-};
-
 // Global thread-safe state and mutex
 DashboardState g_State;
 std::mutex g_StateMutex;
@@ -145,10 +134,10 @@ void BackgroundStateLoop() {
     const std::string jsonPath = "state.json";
 
     std::vector<DashboardState> script = {
-        { "07:47 PM", "72°F Sunset Glow", "Frank", "Sam", "happy", "sharing_photo", "Check out this sunset view from the mountain ridge yesterday!", "assets/photo1.jpg", Color{ 245, 125, 75, 180 } },
-        { "07:47 PM", "72°F Sunset Glow", "Milo", "Sky", "smug", "high_five", "Frank is horizontally mirrored facing left toward the group!", "assets/photo1.jpg", Color{ 64, 156, 255, 180 } },
-        { "07:48 PM", "71°F Golden Hour", "Sam", "Frank", "excited", "back_pat", "Sky and Sam elevated +0.2f cleanly above coffee table at Z = -2.2f!", "assets/photo1.jpg", Color{ 46, 204, 113, 180 } },
-        { "07:48 PM", "71°F Golden Hour", "Sky", "Milo", "panicked", "waving", "Zero wireframes! Active photo texture bound directly to 16:9 wall TV frame!", "assets/photo1.jpg", Color{ 255, 191, 0, 180 } }
+        { "07:53 PM", "72°F Sunset Glow", "Frank", "Sam", "happy", "sharing_photo", "Check out this sunset view from the mountain ridge yesterday!", "assets/photo1.jpg", Color{ 245, 125, 75, 180 } },
+        { "07:53 PM", "72°F Sunset Glow", "Milo", "Sky", "smug", "high_five", "Cropped out 3px image border lines with pixel inset math!", "assets/photo1.jpg", Color{ 64, 156, 255, 180 } },
+        { "07:54 PM", "71°F Golden Hour", "Sam", "Frank", "excited", "back_pat", "Active photo texture bound directly to 16:9 wall TV frame!", "assets/photo1.jpg", Color{ 46, 204, 113, 180 } },
+        { "07:54 PM", "71°F Golden Hour", "Sky", "Milo", "panicked", "waving", "Zero baked-in border lines! Clean photorealistic spatial lounge!", "assets/photo1.jpg", Color{ 255, 191, 0, 180 } }
     };
 
     size_t scriptIndex = 0;
@@ -164,7 +153,7 @@ void BackgroundStateLoop() {
                     json j;
                     file >> j;
                     DashboardState newState;
-                    newState.timeStr = j.value("timeStr", "07:47 PM");
+                    newState.timeStr = j.value("timeStr", "07:53 PM");
                     newState.weatherStr = j.value("weatherStr", "72°F Sunset Glow");
                     newState.activeSpeaker = j.value("activeSpeaker", "Frank");
                     newState.targetFriend = j.value("targetFriend", "Sam");
@@ -203,7 +192,7 @@ int main() {
     const int CANVAS_HEIGHT = 1080;
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
-    InitWindow(1280, 720, "Ambient Lounge - Spatial Viewport");
+    InitWindow(1280, 720, "Ambient Lounge - Clean Inset Canvas");
     SetTargetFPS(60);
 
     // Virtual 1080p Viewport Target
@@ -221,7 +210,7 @@ int main() {
     // Initial state setup
     {
         std::lock_guard<std::mutex> lock(g_StateMutex);
-        g_State.timeStr = "07:47 PM";
+        g_State.timeStr = "07:53 PM";
         g_State.weatherStr = "72°F Sunset Glow";
         g_State.activeSpeaker = "Frank";
         g_State.targetFriend = "Sam";
@@ -239,10 +228,10 @@ int main() {
     Texture2D floorTex = std::filesystem::exists("assets/3d/floor_diffuse.png") ? LoadTexture("assets/3d/floor_diffuse.png") : GeneratePhotoFallbackTexture(1024, 1024);
     Texture2D wallTex  = std::filesystem::exists("assets/3d/wall_diffuse.png") ? LoadTexture("assets/3d/wall_diffuse.png") : GeneratePhotoFallbackTexture(1024, 1024);
     
-    // 2. BIND ACTIVE PHOTO TO TV FRAME: Load photo texture from disk/RAM
+    // 2. BIND ACTIVE PHOTO TO TV FRAME: Load photo texture from disk or fallback
     Texture2D activePhotoTex = std::filesystem::exists("assets/photo1.jpg") ? LoadTexture("assets/photo1.jpg") : GeneratePhotoFallbackTexture(1920, 1080);
 
-    // Build 3D Floor Plane Model (Y = 0.0f)
+    // Build 3D Floor Plane Model
     Mesh floorMesh = GenMeshPlane(24.0f, 24.0f, 1, 1);
     Model floorModel = LoadModelFromMesh(floorMesh);
     SetMaterialTexture(&floorModel.materials[0], MATERIAL_MAP_DIFFUSE, floorTex);
@@ -252,7 +241,7 @@ int main() {
     Model wallModel = LoadModelFromMesh(wallMesh);
     SetMaterialTexture(&wallModel.materials[0], MATERIAL_MAP_DIFFUSE, wallTex);
 
-    // 2. BIND ACTIVE PHOTO TO TV FRAME: Bind activePhotoTex directly to 16:9 wall frame model material
+    // 2. BIND ACTIVE PHOTO TO TV FRAME: Bind activePhotoTex directly to 16:9 wall frame model
     Mesh photoMesh = GenMeshPlane(6.0f, 3.375f, 1, 1);
     Model photoModel = LoadModelFromMesh(photoMesh);
     SetMaterialTexture(&photoModel.materials[0], MATERIAL_MAP_DIFFUSE, activePhotoTex);
@@ -263,19 +252,9 @@ int main() {
     Texture2D samSheet   = LoadTexture("assets/sprites/sam_spritesheet.png");
     Texture2D skySheet   = LoadTexture("assets/sprites/sky_spritesheet.png");
 
-    // 3. ADJUST COFFEE TABLE Z-DEPTH & CHARACTER ELEVATION:
-    // Coffee Table shifted forward to Z = -2.2f
+    // Coffee Table & TV Positions
     Vector3 coffeeTablePos = { 0.0f, 0.25f, -2.2f };
     Vector3 centerPhotoPlanePos = { 0.0f, 3.5f, -7.8f };
-
-    // Elevated Sky & Sam Y positions by +0.2f (1.45f) so torsos sit clearly above coffee table back edge
-    // 4. HORIZONTAL SPRITE FLIP FOR FRANK (RIGHT SIDE): flipX = true negates sourceRec.width
-    std::vector<CharacterSpriteEntry> characterSprites = {
-        { "Milo",  "⚡", "assets/sprites/milo_spritesheet.png",  miloSheet,  Vector3{ -3.5f, 1.25f, -3.0f }, GetSignatureColor("Milo"),  false }, // Far Left (Facing Right)
-        { "Sky",   "☀️", "assets/sprites/sky_spritesheet.png",   skySheet,   Vector3{ -1.8f, 1.45f, -4.2f }, GetSignatureColor("Sky"),   false }, // Mid Left (Elevated Y = 1.45f)
-        { "Sam",   "🚆", "assets/sprites/sam_spritesheet.png",   samSheet,   Vector3{  1.8f, 1.45f, -4.2f }, GetSignatureColor("Sam"),   true  }, // Mid Right (Elevated Y = 1.45f, Flipped Left)
-        { "Frank", "📸", "assets/sprites/frank_spritesheet.png", frankSheet, Vector3{  3.5f, 1.25f, -3.0f }, GetSignatureColor("Frank"), true  }  // Far Right (Flipped Left -> sourceRec.width = -frameWidth)
-    };
 
     // ANIMATION FRAME CONTROLLER
     float animTimer = 0.0f;
@@ -309,18 +288,18 @@ int main() {
             // Begin 3D Scene Rendering
             BeginMode3D(camera);
 
-                // 1. DELETE WIREFRAME DRAW CALLS: Render only solid 3D models (NO DrawBoundingBox, NO DrawCubeWires, NO DrawLine3D)
+                // Solid models (NO WIREFRAME DRAW CALLS)
                 DrawModel(floorModel, Vector3{ 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
                 DrawModelEx(wallModel, Vector3{ 0.0f, 5.0f, -8.0f }, Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, Vector3{ 1.0f, 1.0f, 1.0f }, WHITE);
 
-                // 3D Wooden Coffee Table at Z = -2.2f (NO WIREFRAMES)
+                // 3D Wooden Coffee Table
                 DrawCube(coffeeTablePos, 3.5f, 0.4f, 2.0f, Color{ 65, 42, 28, 255 });
                 DrawCylinder(Vector3{ -1.5f, 0.0f, -3.0f }, 0.08f, 0.08f, 0.3f, 8, Color{ 35, 25, 20, 255 });
                 DrawCylinder(Vector3{  1.5f, 0.0f, -3.0f }, 0.08f, 0.08f, 0.3f, 8, Color{ 35, 25, 20, 255 });
                 DrawCylinder(Vector3{ -1.5f, 0.0f, -1.4f }, 0.08f, 0.08f, 0.3f, 8, Color{ 35, 25, 20, 255 });
                 DrawCylinder(Vector3{  1.5f, 0.0f, -1.4f }, 0.08f, 0.08f, 0.3f, 8, Color{ 35, 25, 20, 255 });
 
-                // 2. BIND ACTIVE PHOTO TO TV FRAME: Render 16:9 TV Display model with activePhotoTex (NO WIREFRAMES)
+                // 2. BIND ACTIVE PHOTO TO TV FRAME: Render 16:9 TV Display model with activePhotoTex
                 DrawCube(centerPhotoPlanePos, 6.3f, 3.675f, 0.12f, Color{ 16, 22, 34, 255 });
                 DrawModelEx(photoModel, Vector3{ centerPhotoPlanePos.x, centerPhotoPlanePos.y, centerPhotoPlanePos.z + 0.07f },
                             Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, Vector3{ 1.0f, 1.0f, 1.0f }, WHITE);
@@ -328,32 +307,61 @@ int main() {
                 // Disable depth mask for transparent billboard pass to fix depth clipping
                 rlDisableDepthMask();
 
-                // 2D BILLBOARD PASS WITH HORIZONTAL FLIPPING FOR EYE CONTACT
-                Vector2 billboardSize = { 2.0f, 2.5f };
+                // -------------------------------------------------------------
+                // 1. INSET FRAME RECTANGLES (CROP BAKED-IN BORDER LINES)
+                // -------------------------------------------------------------
+                float frameW_sky   = (float)skySheet.width / 3.0f;
+                float frameH_sky   = (float)skySheet.height / 3.0f;
+                float frameW_sam   = (float)samSheet.width / 3.0f;
+                float frameH_sam   = (float)samSheet.height / 3.0f;
+                float frameW_milo  = (float)miloSheet.width / 3.0f;
+                float frameH_milo  = (float)miloSheet.height / 3.0f;
+                float frameW_frank = (float)frankSheet.width / 3.0f;
+                float frameH_frank = (float)frankSheet.height / 3.0f;
 
-                for (const auto& c : characterSprites) {
-                    // Micro breathing float motion
-                    float breath = sinf(globalTime * 2.2f + c.position3D.x) * 0.04f;
-                    Vector3 billboardPos = { c.position3D.x, c.position3D.y + breath, c.position3D.z };
+                // 3.0f pixel inset crops out the baked-in grid border lines on sprite sheet frames
+                float inset = 3.0f;
+                float floatOffset = sinf(globalTime * 2.2f) * 0.04f;
 
-                    // Calculate source cropping rectangle (3x3 grid)
-                    float frameWidth  = (float)c.sheetTexture.width / 3.0f;
-                    float frameHeight = (float)c.sheetTexture.height / 3.0f;
-                    
-                    // 4. HORIZONTAL SPRITE FLIP FOR FRANK (RIGHT SIDE): Negate source rectangle width if flipX is true
-                    float signedWidth = c.flipX ? -frameWidth : frameWidth;
-                    float srcX = c.flipX ? ((currentFrame % 3) + 1) * frameWidth : (currentFrame % 3) * frameWidth;
+                // Sky (Yellow Shirt - Left Inner, Elevated Y = 1.55f)
+                Rectangle skySrc = {
+                    (float)(currentFrame % 3) * frameW_sky + inset,
+                    (float)(currentFrame / 3) * frameH_sky + inset,
+                    frameW_sky - (inset * 2.0f),
+                    frameH_sky - (inset * 2.0f)
+                };
+                Vector3 skyPos = { -1.8f, 1.55f + floatOffset, -4.2f };
+                DrawBillboardRec(camera, skySheet, skySrc, skyPos, Vector2{ 2.0f, 2.5f }, WHITE);
 
-                    Rectangle sourceRec = {
-                        srcX,
-                        (float)(currentFrame / 3) * frameHeight,
-                        signedWidth,
-                        frameHeight
-                    };
+                // Sam (Green Shirt - Right Inner, Elevated Y = 1.55f)
+                Rectangle samSrc = {
+                    (float)(currentFrame % 3) * frameW_sam + inset,
+                    (float)(currentFrame / 3) * frameH_sam + inset,
+                    frameW_sam - (inset * 2.0f),
+                    frameH_sam - (inset * 2.0f)
+                };
+                Vector3 samPos = { 1.8f, 1.55f + floatOffset, -4.2f };
+                DrawBillboardRec(camera, samSheet, samSrc, samPos, Vector2{ 2.0f, 2.5f }, WHITE);
 
-                    // Draw Billboard via DrawBillboardRec
-                    DrawBillboardRec(camera, c.sheetTexture, sourceRec, billboardPos, billboardSize, WHITE);
-                }
+                // Milo (Blue Hoodie - Far Left)
+                Rectangle miloSrc = {
+                    (float)(currentFrame % 3) * frameW_milo + inset,
+                    (float)(currentFrame / 3) * frameH_milo + inset,
+                    frameW_milo - (inset * 2.0f),
+                    frameH_milo - (inset * 2.0f)
+                };
+                Vector3 miloPos = { -3.5f, 1.25f + floatOffset, -3.0f };
+                DrawBillboardRec(camera, miloSheet, miloSrc, miloPos, Vector2{ 2.0f, 2.5f }, WHITE);
+
+                // Frank (Peach Sweater - Far Right, FLIPPED HORIZONTALLY WITH NEGATIVE INSET WIDTH)
+                Rectangle frankSrc = {
+                    ((float)(currentFrame % 3) + 1.0f) * frameW_frank - inset,
+                    (float)(currentFrame / 3) * frameH_frank + inset,
+                    -(frameW_frank - (inset * 2.0f)), // Negative width mirrors sprite to face inward
+                    frameH_frank - (inset * 2.0f)
+                };
+                Vector3 frankPos = { 3.5f, 1.25f + floatOffset, -3.0f };
+                DrawBillboardRec(camera, frankSheet, frankSrc, frankPos, Vector2{ 2.0f, 2.5f }, WHITE);
 
                 // Restore depth mask writing
                 rlEnableDepthMask();
@@ -381,23 +389,36 @@ int main() {
             int actionTextW = MeasureText(actionBadge.c_str(), 16);
             DrawText(actionBadge.c_str(), (int)(CANVAS_WIDTH / 2.0f - actionTextW / 2.0f), (int)(actionRect.y + 9.0f), 16, Color{ 245, 248, 255, 255 });
 
-            // Position glassmorphic dialogue cards directly above 3D billboard head coordinates (NO WIREFRAMES)
-            for (const auto& c : characterSprites) {
-                Vector3 headWorldPos = { c.position3D.x, c.position3D.y + 1.25f, c.position3D.z };
+            // Screen-Space Speech Cards & Character Tags
+            struct DisplayRef {
+                std::string name;
+                std::string tag;
+                Vector3 pos;
+                Color color;
+            };
+            std::vector<DisplayRef> displayRefs = {
+                { "Sky",   "☀️", skyPos,   GetSignatureColor("Sky")   },
+                { "Sam",   "🚆", samPos,   GetSignatureColor("Sam")   },
+                { "Milo",  "⚡", miloPos,  GetSignatureColor("Milo")  },
+                { "Frank", "📸", frankPos, GetSignatureColor("Frank") }
+            };
+
+            for (const auto& d : displayRefs) {
+                Vector3 headWorldPos = { d.pos.x, d.pos.y + 1.25f, d.pos.z };
                 Vector2 screenPos = GetWorldToScreen(headWorldPos, camera);
 
-                if (c.name == localState.activeSpeaker && !localState.dialogueText.empty()) {
-                    DrawHighContrastSpeechCard(screenPos, c.name, localState.dialogueText, activeColor);
+                if (d.name == localState.activeSpeaker && !localState.dialogueText.empty()) {
+                    DrawHighContrastSpeechCard(screenPos, d.name, localState.dialogueText, activeColor);
                 }
 
-                // 2D Character Tag (NO WIREFRAMES)
-                std::string tagText = c.name + " " + c.tag;
+                // 2D Character Tag
+                std::string tagText = d.name + " " + d.tag;
                 int tagW = MeasureText(tagText.c_str(), 16);
-                Vector3 tagWorldPos = { c.position3D.x, c.position3D.y - 1.4f, c.position3D.z };
+                Vector3 tagWorldPos = { d.pos.x, d.pos.y - 1.4f, d.pos.z };
                 Vector2 tagScreenPos = GetWorldToScreen(tagWorldPos, camera);
                 Rectangle tagRect = { tagScreenPos.x - (tagW / 2.0f) - 10, tagScreenPos.y, (float)tagW + 20, 26 };
                 DrawRectangleRounded(tagRect, 0.45f, 4, Color{ 12, 16, 28, 220 });
-                DrawRectangleRoundedLines(tagRect, 0.45f, 4, 1.2f, ColorAlpha(c.sigColor, 0.8f));
+                DrawRectangleRoundedLines(tagRect, 0.45f, 4, 1.2f, ColorAlpha(d.color, 0.8f));
                 DrawText(tagText.c_str(), (int)(tagScreenPos.x - tagW / 2.0f), (int)(tagRect.y + 4), 16, WHITE);
             }
 

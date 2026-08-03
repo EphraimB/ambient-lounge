@@ -27,15 +27,14 @@ struct DashboardState {
     Color glowTint;
 };
 
-// Character representation
-struct CharacterEntry {
+// Character Sprite Sheet & Spatial Position Entry
+struct CharacterSpriteEntry {
     std::string name;
     std::string tag;
-    std::string glbPath;
-    std::string pngPath;
-    Vector3 position;
+    std::string spriteSheetPath;
+    Texture2D sheetTexture;
+    Vector3 position3D;
     Color sigColor;
-    float rotationY;
 };
 
 // Global thread-safe state and mutex
@@ -70,7 +69,7 @@ Texture2D GeneratePhotoFallbackTexture(int width, int height) {
     return tex;
 }
 
-// 4. 2D-OVER-3D GLASSMORPHIC SPEECH BUBBLES (High-Contrast Screen-Space Card)
+// 4. SCREEN-SPACE HUD OVERLAYS (Glassmorphic Speech Cards)
 void DrawHighContrastSpeechCard(Vector2 pos, std::string speakerName, std::string text, Color sigColor) {
     int fontSize = 22;
     int titleSize = 18;
@@ -112,7 +111,7 @@ void DrawHighContrastSpeechCard(Vector2 pos, std::string speakerName, std::strin
     if (cardRect.x + cardRect.width > 1890.0f) cardRect.x = 1890.0f - cardRect.width;
     if (cardRect.y < 30.0f) cardRect.y = 30.0f;
 
-    // High-contrast drop shadow
+    // Drop shadow
     DrawRectangleRounded(Rectangle{ cardRect.x + 8, cardRect.y + 8, cardRect.width, cardRect.height }, 0.2f, 8, Color{ 0, 0, 0, 160 });
 
     // Dark glass card backdrop
@@ -121,33 +120,33 @@ void DrawHighContrastSpeechCard(Vector2 pos, std::string speakerName, std::strin
     // Glowing border outline
     DrawRectangleRoundedLines(cardRect, 0.2f, 8, 3.0f, ColorAlpha(sigColor, 0.95f));
 
-    // Speaker Name Header Badge
+    // Header badge
     std::string headerStr = speakerName + " says:";
     DrawText(headerStr.c_str(), (int)(cardRect.x + padding), (int)(cardRect.y + padding), titleSize, sigColor);
 
-    // Render dialogue text
+    // Dialogue text
     float lineY = cardRect.y + padding + titleSize + 10;
     for (const auto& line : lines) {
         DrawText(line.c_str(), (int)(cardRect.x + padding), (int)lineY, fontSize, Color{ 255, 255, 255, 255 });
         lineY += fontSize + 6;
     }
 
-    // Pointer arrow
+    // Pointer arrow down to billboard head
     Vector2 p1 = { pos.x - 14.0f, cardRect.y + cardRect.height };
     Vector2 p2 = { pos.x + 14.0f, cardRect.y + cardRect.height };
     Vector2 p3 = { pos.x, pos.y - 30.0f };
     DrawTriangle(p1, p3, p2, Color{ 12, 16, 28, 245 });
 }
 
-// Background Network & State Thread
+// Background State Thread
 void BackgroundStateLoop() {
     const std::string jsonPath = "state.json";
 
     std::vector<DashboardState> script = {
-        { "06:37 PM", "72°F Sunset Glow", "Frank", "Sam", "happy", "sharing_photo", "Check out this sunset view from the mountain ridge yesterday!", "assets/photo1.jpg", Color{ 245, 125, 75, 180 } },
-        { "06:37 PM", "72°F Sunset Glow", "Milo", "Sky", "smug", "high_five", "Told you our Nintendo/Pixar 3D lounge would look super stylized!", "assets/photo1.jpg", Color{ 64, 156, 255, 180 } },
-        { "06:38 PM", "71°F Golden Hour", "Sam", "Frank", "excited", "back_pat", "Awesome capture Frank! The physical 3D digital art frame looks amazing!", "assets/photo1.jpg", Color{ 46, 204, 113, 180 } },
-        { "06:38 PM", "71°F Golden Hour", "Sky", "Milo", "panicked", "waving", "Wait, did anyone check the 2D-over-3D glassmorphic speech cards?", "assets/photo1.jpg", Color{ 255, 191, 0, 180 } }
+        { "07:32 PM", "72°F Sunset Glow", "Frank", "Sam", "happy", "sharing_photo", "Check out this sunset view from the mountain ridge yesterday!", "assets/photo1.jpg", Color{ 245, 125, 75, 180 } },
+        { "07:32 PM", "72°F Sunset Glow", "Milo", "Sky", "smug", "high_five", "Our 2D animated billboard sprites look super clean inside the 3D lounge!", "assets/photo1.jpg", Color{ 64, 156, 255, 180 } },
+        { "07:33 PM", "71°F Golden Hour", "Sam", "Frank", "excited", "back_pat", "Awesome capture Frank! The 3x3 sprite sheet animation loop looks fantastic!", "assets/photo1.jpg", Color{ 46, 204, 113, 180 } },
+        { "07:33 PM", "71°F Golden Hour", "Sky", "Milo", "panicked", "waving", "Wait, did anyone check the 2D-over-3D billboard speech card tracking?", "assets/photo1.jpg", Color{ 255, 191, 0, 180 } }
     };
 
     size_t scriptIndex = 0;
@@ -163,13 +162,13 @@ void BackgroundStateLoop() {
                     json j;
                     file >> j;
                     DashboardState newState;
-                    newState.timeStr = j.value("timeStr", "06:37 PM");
+                    newState.timeStr = j.value("timeStr", "07:32 PM");
                     newState.weatherStr = j.value("weatherStr", "72°F Sunset Glow");
                     newState.activeSpeaker = j.value("activeSpeaker", "Frank");
                     newState.targetFriend = j.value("targetFriend", "Sam");
                     newState.emotion = j.value("emotion", "happy");
                     newState.action = j.value("action", "sharing_photo");
-                    newState.dialogueText = j.value("dialogueText", "Hello stylized 3D lounge!");
+                    newState.dialogueText = j.value("dialogueText", "Hello 2D animated billboard spatial lounge!");
                     newState.photoPath = j.value("photoPath", "");
                     newState.glowTint = GetSignatureColor(newState.activeSpeaker);
                     newState.glowTint.a = 180;
@@ -202,7 +201,7 @@ int main() {
     const int CANVAS_HEIGHT = 1080;
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
-    InitWindow(1280, 720, "Ambient Lounge - Stylized 3D Nintendo/Pixar Aesthetic");
+    InitWindow(1280, 720, "Ambient Lounge - Animated 2D Billboard Sprite Sheets");
     SetTargetFPS(60);
 
     // Virtual 1080p Viewport Target
@@ -220,7 +219,7 @@ int main() {
     // Initial state setup
     {
         std::lock_guard<std::mutex> lock(g_StateMutex);
-        g_State.timeStr = "06:37 PM";
+        g_State.timeStr = "07:32 PM";
         g_State.weatherStr = "72°F Sunset Glow";
         g_State.activeSpeaker = "Frank";
         g_State.targetFriend = "Sam";
@@ -237,7 +236,6 @@ int main() {
     // Load Room Environment Textures
     Texture2D floorTex = std::filesystem::exists("assets/3d/floor_diffuse.png") ? LoadTexture("assets/3d/floor_diffuse.png") : GeneratePhotoFallbackTexture(1024, 1024);
     Texture2D wallTex  = std::filesystem::exists("assets/3d/wall_diffuse.png") ? LoadTexture("assets/3d/wall_diffuse.png") : GeneratePhotoFallbackTexture(1024, 1024);
-    Texture2D activePhotoTex = GeneratePhotoFallbackTexture(1920, 1080);
 
     // Build 3D Floor Plane Model
     Mesh floorMesh = GenMeshPlane(24.0f, 24.0f, 1, 1);
@@ -249,58 +247,38 @@ int main() {
     Model wallModel = LoadModelFromMesh(wallMesh);
     SetMaterialTexture(&wallModel.materials[0], MATERIAL_MAP_DIFFUSE, wallTex);
 
-    // 3. STYLIZED 3D CHARACTER MODELS (.glb) & 2.5D BILLBOARD FALLBACKS
-    std::vector<CharacterEntry> characters = {
-        { "Frank", "📸", "assets/models/frank.glb", "assets/models/frank.png", Vector3{ 0.0f, 1.5f, -2.4f }, GetSignatureColor("Frank"), 0.0f },   // TOP (facing center)
-        { "Sam",   "🚆", "assets/models/sam.glb",   "assets/models/sam.png",   Vector3{ 0.0f, -1.5f, 2.4f }, GetSignatureColor("Sam"),   180.0f }, // BOTTOM (facing center)
-        { "Sky",   "☀️", "assets/models/sky.glb",   "assets/models/sky.png",   Vector3{ -4.6f, 0.0f, 0.0f }, GetSignatureColor("Sky"),   90.0f },  // LEFT (facing center)
-        { "Milo",  "⚡", "assets/models/milo.glb",  "assets/models/milo.png",  Vector3{ 4.6f, 0.0f, 0.0f },  GetSignatureColor("Milo"),  -90.0f }  // RIGHT (facing center)
+    // 1. SPRITE SHEET ASSET LOADING (3x3 grid transparent PNG sheets from assets/sprites/)
+    Texture2D frankSheet = LoadTexture("assets/sprites/frank_spritesheet.png");
+    Texture2D miloSheet  = LoadTexture("assets/sprites/milo_spritesheet.png");
+    Texture2D samSheet   = LoadTexture("assets/sprites/sam_spritesheet.png");
+    Texture2D skySheet   = LoadTexture("assets/sprites/sky_spritesheet.png");
+
+    std::vector<CharacterSpriteEntry> characterSprites = {
+        { "Frank", "📸", "assets/sprites/frank_spritesheet.png", frankSheet, Vector3{ 0.0f, 1.3f, -2.4f }, GetSignatureColor("Frank") },   // TOP
+        { "Sam",   "🚆", "assets/sprites/sam_spritesheet.png",   samSheet,   Vector3{ 0.0f, -0.6f, 2.4f }, GetSignatureColor("Sam")   },   // BOTTOM
+        { "Sky",   "☀️", "assets/sprites/sky_spritesheet.png",   skySheet,   Vector3{ -4.6f, 0.4f, 0.0f }, GetSignatureColor("Sky")   },   // LEFT
+        { "Milo",  "⚡", "assets/sprites/milo_spritesheet.png",  miloSheet,  Vector3{ 4.6f, 0.4f, 0.0f },  GetSignatureColor("Milo")  }    // RIGHT
     };
 
-    // Load GLTF Models & Animations
-    Model frankModel = LoadModel("assets/models/frank.glb");
-    Model miloModel  = LoadModel("assets/models/milo.glb");
-    Model samModel    = LoadModel("assets/models/sam.glb");
-    Model skyModel    = LoadModel("assets/models/sky.glb");
-
-    std::map<std::string, Model> modelMap = {
-        { "Frank", frankModel },
-        { "Milo",  miloModel },
-        { "Sam",   samModel },
-        { "Sky",   skyModel }
-    };
-
-    std::map<std::string, ModelAnimation*> animMap;
-    std::map<std::string, int> animCountMap;
-    std::map<std::string, int> animFrameMap;
-
-    for (const auto& c : characters) {
-        int count = 0;
-        ModelAnimation* anims = LoadModelAnimations(c.glbPath.c_str(), &count);
-        animMap[c.name] = anims;
-        animCountMap[c.name] = count;
-        animFrameMap[c.name] = 0;
-    }
-
-    // Load 2.5D Fallback Billboard Textures
-    std::map<std::string, Texture2D> billboardTexMap;
-    for (const auto& c : characters) {
-        if (std::filesystem::exists(c.pngPath)) {
-            billboardTexMap[c.name] = LoadTexture(c.pngPath.c_str());
-        } else {
-            billboardTexMap[c.name] = GeneratePhotoFallbackTexture(256, 256);
-        }
-    }
-
-    // 2. CENTER PHOTO FRAME (16:9 3D Quad mounted on back wall above coffee table)
+    // Center Photo Frame Position
     Vector3 centerPhotoPlanePos = { 0.0f, 1.5f, -4.8f };
     Vector3 coffeeTablePos     = { 0.0f, -1.2f, 0.0f };
 
+    // 2. ANIMATION FRAME CONTROLLER
+    float animTimer = 0.0f;
+    int currentFrame = 0;
     float globalTime = 0.0f;
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
         globalTime += dt;
+
+        // Tick animation frame index every 0.15 seconds
+        animTimer += dt;
+        if (animTimer >= 0.15f) {
+            animTimer = 0.0f;
+            currentFrame = (currentFrame + 1) % 9; // 3x3 grid = 9 frames
+        }
 
         // Snapshot state safely
         DashboardState localState;
@@ -309,16 +287,8 @@ int main() {
             localState = g_State;
         }
 
-        // Skeletal Animation Playback (UpdateModelAnimation)
-        for (const auto& c : characters) {
-            if (animCountMap[c.name] > 0 && animMap[c.name] != nullptr) {
-                animFrameMap[c.name] = (animFrameMap[c.name] + 1) % animMap[c.name][0].frameCount;
-                UpdateModelAnimation(modelMap[c.name], animMap[c.name][0], animFrameMap[c.name]);
-            }
-        }
-
         // -------------------------------------------------------------
-        // RENDER 3D SPATIAL CANVAS
+        // RENDER 3D SPATIAL CANVAS WITH ANIMATED 2D BILLBOARD SPRITES
         // -------------------------------------------------------------
         BeginTextureMode(target);
             ClearBackground(Color{ 10, 14, 24, 255 });
@@ -326,14 +296,11 @@ int main() {
             // Begin 3D Scene Rendering
             BeginMode3D(camera);
 
-                // 1. CLEAN 3D ENVIRONMENT (NO DEBUG GRID/CAPSULES)
-                // Dark slate floor plane
+                // 3D Environment (Dark Slate Floor + Wood Wall)
                 DrawModel(floorModel, Vector3{ 0.0f, -1.8f, 0.0f }, 1.0f, WHITE);
-
-                // Dark wood back wall plane
                 DrawModelEx(wallModel, Vector3{ 0.0f, 3.2f, -5.0f }, Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, Vector3{ 1.0f, 1.0f, 1.0f }, WHITE);
 
-                // 3D Wooden Coffee Table in center lounge
+                // 3D Wooden Coffee Table
                 DrawCube(coffeeTablePos, 3.5f, 0.4f, 2.0f, Color{ 65, 42, 28, 255 });
                 DrawCubeWires(coffeeTablePos, 3.55f, 0.42f, 2.05f, Color{ 110, 80, 50, 255 });
                 DrawCylinder(Vector3{ -1.5f, -1.5f, -0.8f }, 0.08f, 0.08f, 0.6f, 8, Color{ 35, 25, 20, 255 });
@@ -341,41 +308,47 @@ int main() {
                 DrawCylinder(Vector3{ -1.5f, -1.5f,  0.8f }, 0.08f, 0.08f, 0.6f, 8, Color{ 35, 25, 20, 255 });
                 DrawCylinder(Vector3{  1.5f, -1.5f,  0.8f }, 0.08f, 0.08f, 0.6f, 8, Color{ 35, 25, 20, 255 });
 
-                // 2. CENTER PHOTO FRAME (16:9 Vertical 3D Quad & Bezel Geometry)
-                // Dark wooden bezel frame geometry
+                // Center 16:9 3D Photo Quad Display with Wooden Bezel Frame
                 DrawCube(centerPhotoPlanePos, 6.3f, 3.675f, 0.12f, Color{ 16, 22, 34, 255 });
                 DrawCubeWires(centerPhotoPlanePos, 6.35f, 3.725f, 0.14f, Color{ 140, 160, 190, 255 });
-
-                // Render active photo onto 16:9 3D Quad Plane
                 DrawPlane(Vector3{ centerPhotoPlanePos.x, centerPhotoPlanePos.y, centerPhotoPlanePos.z + 0.07f },
                           Vector2{ 6.0f, 3.375f }, WHITE);
 
-                // 3. STYLIZED 3D CHARACTER MODELS & 2.5D BILLBOARD FALLBACKS
-                for (const auto& c : characters) {
+                // 3. 3D BILLBOARD RENDERING PASS (DrawBillboardRec)
+                for (const auto& c : characterSprites) {
                     bool isActive = (c.name == localState.activeSpeaker);
                     bool isTarget = (c.name == localState.targetFriend);
 
-                    // Micro breathing float motion
-                    float breath = sinf(globalTime * 2.2f + c.position.x) * 0.05f;
-                    Vector3 charPos = { c.position.x, c.position.y + breath, c.position.z };
+                    // Micro breathing motion
+                    float breath = sinf(globalTime * 2.2f + c.position3D.x) * 0.05f;
+                    Vector3 billboardPos = { c.position3D.x, c.position3D.y + breath, c.position3D.z };
 
-                    Model model = modelMap[c.name];
+                    // Calculate source cropping rectangle (3x3 grid)
+                    float frameWidth  = (float)c.sheetTexture.width / 3.0f;
+                    float frameHeight = (float)c.sheetTexture.height / 3.0f;
+                    Rectangle sourceRec = {
+                        (float)(currentFrame % 3) * frameWidth,
+                        (float)(currentFrame / 3) * frameHeight,
+                        frameWidth,
+                        frameHeight
+                    };
 
-                    if (IsModelReady(model) && model.meshCount > 0) {
-                        // Render GLTF 3D Model facing center photo frame
-                        DrawModelEx(model, charPos, Vector3{ 0.0f, 1.0f, 0.0f }, c.rotationY, Vector3{ 1.0f, 1.0f, 1.0f }, c.sigColor);
-                    } else {
-                        // FALLBACK: Render smooth 2.5D billboard sprite using stylized PNG
-                        Texture2D billTex = billboardTexMap[c.name];
-                        Rectangle srcRec = { 0, 0, (float)billTex.width, (float)billTex.height };
-                        DrawBillboardRec(camera, billTex, srcRec, charPos, Vector2{ 2.2f, 2.2f }, WHITE);
+                    // Active / Target aura rings on floor
+                    if (isActive) {
+                        float pulseR = 0.95f + sinf(globalTime * 5.0f) * 0.12f;
+                        DrawCircle3D(Vector3{ billboardPos.x, billboardPos.y - 1.15f, billboardPos.z }, pulseR, Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(c.sigColor, 0.75f));
+                    } else if (isTarget) {
+                        DrawCircle3D(Vector3{ billboardPos.x, billboardPos.y - 1.15f, billboardPos.z }, 0.85f, Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(WHITE, 0.5f));
                     }
+
+                    // Render 2D Animated Billboard Sprite in 3D Space
+                    DrawBillboardRec(camera, c.sheetTexture, sourceRec, billboardPos, Vector2{ 2.0f, 2.5f }, WHITE);
                 }
 
             EndMode3D();
 
             // ---------------------------------------------------------
-            // 4. 2D-OVER-3D GLASSMORPHIC SPEECH BUBBLES
+            // 4. SCREEN-SPACE HUD OVERLAYS (GetWorldToScreen Tracking)
             // ---------------------------------------------------------
             
             // Top Center Clock Badge
@@ -395,9 +368,9 @@ int main() {
             int actionTextW = MeasureText(actionBadge.c_str(), 16);
             DrawText(actionBadge.c_str(), (int)(CANVAS_WIDTH / 2.0f - actionTextW / 2.0f), (int)(actionRect.y + 9.0f), 16, Color{ 245, 248, 255, 255 });
 
-            // Convert 3D head positions to 2D screen space for glassmorphic speech cards
-            for (const auto& c : characters) {
-                Vector3 headWorldPos = { c.position.x, c.position.y + 1.4f, c.position.z };
+            // Position glassmorphic dialogue cards directly above 3D billboard head coordinates
+            for (const auto& c : characterSprites) {
+                Vector3 headWorldPos = { c.position3D.x, c.position3D.y + 1.25f, c.position3D.z };
                 Vector2 screenPos = GetWorldToScreen(headWorldPos, camera);
 
                 if (c.name == localState.activeSpeaker && !localState.dialogueText.empty()) {
@@ -407,7 +380,7 @@ int main() {
                 // 2D Character Tag
                 std::string tagText = c.name + " " + c.tag;
                 int tagW = MeasureText(tagText.c_str(), 16);
-                Vector3 tagWorldPos = { c.position.x, c.position.y - 1.2f, c.position.z };
+                Vector3 tagWorldPos = { c.position3D.x, c.position3D.y - 1.2f, c.position3D.z };
                 Vector2 tagScreenPos = GetWorldToScreen(tagWorldPos, camera);
                 Rectangle tagRect = { tagScreenPos.x - (tagW / 2.0f) - 10, tagScreenPos.y, (float)tagW + 20, 26 };
                 DrawRectangleRounded(tagRect, 0.45f, 4, Color{ 12, 16, 28, 220 });
@@ -416,7 +389,7 @@ int main() {
             }
 
             // Status Bar
-            DrawText("Stylized 3D Nintendo/Pixar Aesthetic | GLTF .glb Models & 2.5D Billboard Fallbacks", 25, CANVAS_HEIGHT - 35, 16, Color{ 160, 180, 210, 180 });
+            DrawText("Animated 2D Billboard Sprite Sheets (3x3 Grid) | DrawBillboardRec Rendering Pass", 25, CANVAS_HEIGHT - 35, 16, Color{ 160, 180, 210, 180 });
 
         EndTextureMode();
 
@@ -451,20 +424,12 @@ int main() {
     // Cleanup resources
     UnloadTexture(floorTex);
     UnloadTexture(wallTex);
-    UnloadTexture(activePhotoTex);
+    UnloadTexture(frankSheet);
+    UnloadTexture(miloSheet);
+    UnloadTexture(samSheet);
+    UnloadTexture(skySheet);
     UnloadModel(floorModel);
     UnloadModel(wallModel);
-    for (auto& pair : modelMap) {
-        if (IsModelReady(pair.second)) UnloadModel(pair.second);
-    }
-    for (auto& pair : animMap) {
-        if (pair.second != nullptr && animCountMap[pair.first] > 0) {
-            UnloadModelAnimations(pair.second, animCountMap[pair.first]);
-        }
-    }
-    for (auto& pair : billboardTexMap) {
-        UnloadTexture(pair.second);
-    }
     UnloadRenderTexture(target);
     CloseWindow();
 

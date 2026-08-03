@@ -37,6 +37,81 @@ struct AmbientParticle {
     float pulseSpeed;
 };
 
+// Get character's signature color
+Color GetFriendSignatureColor(const std::string& friendName) {
+    if (friendName == "Frank") return Color{ 255, 105, 180, 255 }; // Pink
+    if (friendName == "Milo")  return Color{ 64, 156, 255, 255 };  // Blue
+    if (friendName == "Sam")   return Color{ 46, 204, 113, 255 };  // Emerald
+    if (friendName == "Sky")   return Color{ 255, 191, 0, 255 };   // Amber
+    return Color{ 180, 180, 200, 255 };
+}
+
+// Render Vector Friend Avatar with facial expressions
+void DrawFriendAvatar(Vector2 pos, std::string friendName, std::string emotion) {
+    Color sigColor = GetFriendSignatureColor(friendName);
+
+    // Outer glowing circle for signature color
+    DrawCircleV(pos, 48.0f, ColorAlpha(sigColor, 0.25f));
+    DrawCircleV(pos, 42.0f, sigColor);
+
+    // Dark glass face disc
+    DrawCircleV(pos, 34.0f, Color{ 22, 28, 45, 255 });
+
+    // Eye positions
+    Vector2 leftEye  = { pos.x - 11.0f, pos.y - 7.0f };
+    Vector2 rightEye = { pos.x + 11.0f, pos.y - 7.0f };
+
+    if (emotion == "panicked") {
+        // Wide open startled eyes (DrawCircle)
+        DrawCircleV(leftEye, 7.0f, WHITE);
+        DrawCircleV(rightEye, 7.0f, WHITE);
+        DrawCircleV(leftEye, 2.5f, sigColor);
+        DrawCircleV(rightEye, 2.5f, sigColor);
+
+        // Raised eyebrow lines (DrawLineEx)
+        DrawLineEx(Vector2{ leftEye.x - 7.0f, leftEye.y - 8.0f }, Vector2{ leftEye.x + 5.0f, leftEye.y - 13.0f }, 2.5f, WHITE);
+        DrawLineEx(Vector2{ rightEye.x - 5.0f, rightEye.y - 13.0f }, Vector2{ rightEye.x + 7.0f, rightEye.y - 8.0f }, 2.5f, WHITE);
+
+        // Open ellipse mouth (DrawRing / DrawCircle)
+        Vector2 mouthPos = { pos.x, pos.y + 11.0f };
+        DrawRing(mouthPos, 3.0f, 7.5f, 0.0f, 360.0f, 20, WHITE);
+        DrawCircleV(mouthPos, 3.0f, Color{ 22, 28, 45, 255 });
+    }
+    else if (emotion == "smug") {
+        // Squinted eye arcs (DrawRing / DrawLineEx)
+        DrawRing(Vector2{ leftEye.x, leftEye.y - 2.0f }, 3.5f, 5.5f, 210.0f, 330.0f, 16, WHITE);
+        DrawRing(Vector2{ rightEye.x, rightEye.y - 2.0f }, 3.5f, 5.5f, 210.0f, 330.0f, 16, WHITE);
+
+        // Smirk eyebrow line
+        DrawLineEx(Vector2{ leftEye.x - 5.0f, leftEye.y - 8.0f }, Vector2{ leftEye.x + 5.0f, leftEye.y - 6.0f }, 2.0f, WHITE);
+        DrawLineEx(Vector2{ rightEye.x - 5.0f, rightEye.y - 8.0f }, Vector2{ rightEye.x + 5.0f, rightEye.y - 10.0f }, 2.0f, WHITE);
+
+        // Horizontal smirk line with upward tail (DrawLineEx)
+        DrawLineEx(Vector2{ pos.x - 10.0f, pos.y + 12.0f }, Vector2{ pos.x + 8.0f, pos.y + 10.0f }, 3.0f, WHITE);
+        DrawLineEx(Vector2{ pos.x + 8.0f, pos.y + 10.0f }, Vector2{ pos.x + 14.0f, pos.y + 5.0f }, 3.0f, WHITE);
+    }
+    else { // "happy" or fallback
+        // Open eyes (DrawCircle)
+        DrawCircleV(leftEye, 5.0f, WHITE);
+        DrawCircleV(rightEye, 5.0f, WHITE);
+        DrawCircleV(leftEye, 3.0f, sigColor);
+        DrawCircleV(rightEye, 3.0f, sigColor);
+        DrawCircleV(Vector2{ leftEye.x - 1.5f, leftEye.y - 1.5f }, 1.2f, WHITE);
+        DrawCircleV(Vector2{ rightEye.x - 1.5f, rightEye.y - 1.5f }, 1.2f, WHITE);
+
+        // Eyebrows
+        DrawLineEx(Vector2{ leftEye.x - 6.0f, leftEye.y - 9.0f }, Vector2{ leftEye.x + 5.0f, leftEye.y - 9.0f }, 2.0f, WHITE);
+        DrawLineEx(Vector2{ rightEye.x - 5.0f, rightEye.y - 9.0f }, Vector2{ rightEye.x + 6.0f, rightEye.y - 9.0f }, 2.0f, WHITE);
+
+        // Upward curved mouth spline (DrawSplineSegmentBezierCubic)
+        Vector2 p1 = { pos.x - 12.0f, pos.y + 8.0f };
+        Vector2 c2 = { pos.x - 6.0f, pos.y + 18.0f };
+        Vector2 c3 = { pos.x + 6.0f, pos.y + 18.0f };
+        Vector2 p4 = { pos.x + 12.0f, pos.y + 8.0f };
+        DrawSplineSegmentBezierCubic(p1, c2, c3, p4, 3.0f, WHITE);
+    }
+}
+
 // Helper function to create fallback procedural texture if photo missing
 Texture2D CreateFallbackPhotoTexture() {
     Image img = GenImageGradientLinear(560, 380, 45, Color{ 45, 25, 85, 255 }, Color{ 235, 110, 128, 255 });
@@ -184,10 +259,10 @@ int main() {
 
     // 3. Define 4 fixed spatial anchor positions for friend group surrounding center photo
     std::vector<FriendAnchor> friendAnchors = {
-        { "Frank", Vector2{ 960, 160 },  Color{ 255, 107, 107, 255 } }, // TOP
-        { "Sam",   Vector2{ 960, 920 },  Color{ 78, 205, 196, 255 } },  // BOTTOM
-        { "Sky",   Vector2{ 260, 540 },  Color{ 69, 183, 209, 255 } },  // LEFT
-        { "Milo",  Vector2{ 1660, 540 }, Color{ 255, 160, 122, 255 } }  // RIGHT
+        { "Frank", Vector2{ 960, 160 },  GetFriendSignatureColor("Frank") }, // TOP (Pink)
+        { "Sam",   Vector2{ 960, 920 },  GetFriendSignatureColor("Sam")   }, // BOTTOM (Emerald)
+        { "Sky",   Vector2{ 260, 540 },  GetFriendSignatureColor("Sky")   }, // LEFT (Amber)
+        { "Milo",  Vector2{ 1660, 540 }, GetFriendSignatureColor("Milo")  }  // RIGHT (Blue)
     };
 
     // Center photo anchor
@@ -320,24 +395,17 @@ int main() {
                 bool isActive = (friendAnchor.name == state.activeSpeaker);
                 bool isTarget = (friendAnchor.name == state.targetFriend);
 
-                // Avatar Outer Ring & Glow
-                float baseRadius = 42.0f;
+                // Active / Target pulse ring animations
                 if (isActive) {
-                    float pulseRadius = baseRadius + sinf(globalTime * 5.0f) * 5.0f;
-                    DrawCircleV(friendAnchor.position, pulseRadius + 8.0f, ColorAlpha(friendAnchor.color, 0.35f));
-                    DrawCircleV(friendAnchor.position, pulseRadius, friendAnchor.color);
+                    float pulseRadius = 42.0f + sinf(globalTime * 5.0f) * 6.0f;
+                    DrawCircleV(friendAnchor.position, pulseRadius + 10.0f, ColorAlpha(friendAnchor.color, 0.4f));
                 } else if (isTarget) {
-                    DrawCircleV(friendAnchor.position, baseRadius + 4.0f, ColorAlpha(WHITE, 0.5f));
-                    DrawCircleV(friendAnchor.position, baseRadius, friendAnchor.color);
-                } else {
-                    DrawCircleV(friendAnchor.position, baseRadius, ColorAlpha(friendAnchor.color, 0.7f));
+                    DrawCircleV(friendAnchor.position, 48.0f, ColorAlpha(WHITE, 0.4f));
                 }
 
-                // Avatar Inner Fill & Initials
-                DrawCircleV(friendAnchor.position, 34.0f, Color{ 22, 28, 45, 255 });
-                std::string initial = friendAnchor.name.substr(0, 1);
-                int initW = MeasureText(initial.c_str(), 26);
-                DrawText(initial.c_str(), (int)(friendAnchor.position.x - initW / 2.0f), (int)(friendAnchor.position.y - 13.0f), 26, friendAnchor.color);
+                // Render vector face avatar using DrawFriendAvatar
+                std::string currentEmotion = isActive ? state.emotion : "happy";
+                DrawFriendAvatar(friendAnchor.position, friendAnchor.name, currentEmotion);
 
                 // Name Tag Below Avatar
                 int nameW = MeasureText(friendAnchor.name.c_str(), 18);
@@ -345,7 +413,7 @@ int main() {
                 DrawRectangleRounded(nameTagRect, 0.4f, 4, Color{ 18, 24, 40, 200 });
                 DrawText(friendAnchor.name.c_str(), (int)(friendAnchor.position.x - nameW / 2.0f), (int)(nameTagRect.y + 4), 18, WHITE);
 
-                // 4. Render Speech Bubble if this friend anchor is the Active Speaker
+                // Render Speech Bubble if this friend anchor is the Active Speaker
                 if (isActive && !state.dialogueText.empty()) {
                     DrawSpeechBubble(friendAnchor.position, state.dialogueText, friendAnchor.color);
                 }

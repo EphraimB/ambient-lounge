@@ -60,7 +60,7 @@ Texture2D GeneratePhotoFallbackTexture(int width, int height) {
     return tex;
 }
 
-// SCREEN-SPACE HUD OVERLAYS (Glassmorphic Speech Cards)
+// SCREEN-SPACE HUD OVERLAYS (Glassmorphic Speech Cards - NO SPEAKER HIGHLIGHT BOX AROUND CHARACTER BODY)
 void DrawHighContrastSpeechCard(Vector2 pos, std::string speakerName, std::string text, Color sigColor) {
     int fontSize = 22;
     int titleSize = 18;
@@ -102,14 +102,11 @@ void DrawHighContrastSpeechCard(Vector2 pos, std::string speakerName, std::strin
     if (cardRect.x + cardRect.width > 1890.0f) cardRect.x = 1890.0f - cardRect.width;
     if (cardRect.y < 30.0f) cardRect.y = 30.0f;
 
-    // Drop shadow
+    // Speech Card Shadow
     DrawRectangleRounded(Rectangle{ cardRect.x + 8, cardRect.y + 8, cardRect.width, cardRect.height }, 0.2f, 8, Color{ 0, 0, 0, 160 });
 
-    // Dark glass card backdrop
+    // Speech Card Dark Glass Backdrop
     DrawRectangleRounded(cardRect, 0.2f, 8, Color{ 12, 16, 28, 245 });
-
-    // Glowing border outline
-    DrawRectangleRoundedLines(cardRect, 0.2f, 8, 3.0f, ColorAlpha(sigColor, 0.95f));
 
     // Header badge
     std::string headerStr = speakerName + " says:";
@@ -134,10 +131,10 @@ void BackgroundStateLoop() {
     const std::string jsonPath = "state.json";
 
     std::vector<DashboardState> script = {
-        { "07:53 PM", "72°F Sunset Glow", "Frank", "Sam", "happy", "sharing_photo", "Check out this sunset view from the mountain ridge yesterday!", "assets/photo1.jpg", Color{ 245, 125, 75, 180 } },
-        { "07:53 PM", "72°F Sunset Glow", "Milo", "Sky", "smug", "high_five", "Cropped out 3px image border lines with pixel inset math!", "assets/photo1.jpg", Color{ 64, 156, 255, 180 } },
-        { "07:54 PM", "71°F Golden Hour", "Sam", "Frank", "excited", "back_pat", "Active photo texture bound directly to 16:9 wall TV frame!", "assets/photo1.jpg", Color{ 46, 204, 113, 180 } },
-        { "07:54 PM", "71°F Golden Hour", "Sky", "Milo", "panicked", "waving", "Zero baked-in border lines! Clean photorealistic spatial lounge!", "assets/photo1.jpg", Color{ 255, 191, 0, 180 } }
+        { "08:05 PM", "72°F Sunset Glow", "Frank", "Sam", "happy", "sharing_photo", "Check out this sunset view from the mountain ridge yesterday!", "assets/photo1.jpg", Color{ 245, 125, 75, 180 } },
+        { "08:05 PM", "72°F Sunset Glow", "Milo", "Sky", "smug", "high_five", "Milo Y elevated to +1.80f and Sam Y set to 1.55f!", "assets/photo1.jpg", Color{ 64, 156, 255, 180 } },
+        { "08:06 PM", "71°F Golden Hour", "Sam", "Frank", "excited", "back_pat", "Active photo texture bound directly to 16:9 wall TV screen plane!", "assets/photo1.jpg", Color{ 46, 204, 113, 180 } },
+        { "08:06 PM", "71°F Golden Hour", "Sky", "Milo", "panicked", "waving", "Zero speaker highlight box around character body!", "assets/photo1.jpg", Color{ 255, 191, 0, 180 } }
     };
 
     size_t scriptIndex = 0;
@@ -153,7 +150,7 @@ void BackgroundStateLoop() {
                     json j;
                     file >> j;
                     DashboardState newState;
-                    newState.timeStr = j.value("timeStr", "07:53 PM");
+                    newState.timeStr = j.value("timeStr", "08:05 PM");
                     newState.weatherStr = j.value("weatherStr", "72°F Sunset Glow");
                     newState.activeSpeaker = j.value("activeSpeaker", "Frank");
                     newState.targetFriend = j.value("targetFriend", "Sam");
@@ -192,7 +189,7 @@ int main() {
     const int CANVAS_HEIGHT = 1080;
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
-    InitWindow(1280, 720, "Ambient Lounge - Clean Inset Canvas");
+    InitWindow(1280, 720, "Ambient Lounge - Polished Spatial Canvas");
     SetTargetFPS(60);
 
     // Virtual 1080p Viewport Target
@@ -210,7 +207,7 @@ int main() {
     // Initial state setup
     {
         std::lock_guard<std::mutex> lock(g_StateMutex);
-        g_State.timeStr = "07:53 PM";
+        g_State.timeStr = "08:05 PM";
         g_State.weatherStr = "72°F Sunset Glow";
         g_State.activeSpeaker = "Frank";
         g_State.targetFriend = "Sam";
@@ -228,7 +225,7 @@ int main() {
     Texture2D floorTex = std::filesystem::exists("assets/3d/floor_diffuse.png") ? LoadTexture("assets/3d/floor_diffuse.png") : GeneratePhotoFallbackTexture(1024, 1024);
     Texture2D wallTex  = std::filesystem::exists("assets/3d/wall_diffuse.png") ? LoadTexture("assets/3d/wall_diffuse.png") : GeneratePhotoFallbackTexture(1024, 1024);
     
-    // 2. BIND ACTIVE PHOTO TO TV FRAME: Load photo texture from disk or fallback
+    // 3. BIND ACTIVE PHOTO TO TV SCREEN: Load photo texture from disk or fallback
     Texture2D activePhotoTex = std::filesystem::exists("assets/photo1.jpg") ? LoadTexture("assets/photo1.jpg") : GeneratePhotoFallbackTexture(1920, 1080);
 
     // Build 3D Floor Plane Model
@@ -241,8 +238,8 @@ int main() {
     Model wallModel = LoadModelFromMesh(wallMesh);
     SetMaterialTexture(&wallModel.materials[0], MATERIAL_MAP_DIFFUSE, wallTex);
 
-    // 2. BIND ACTIVE PHOTO TO TV FRAME: Bind activePhotoTex directly to 16:9 wall frame model
-    Mesh photoMesh = GenMeshPlane(6.0f, 3.375f, 1, 1);
+    // 3. BIND ACTIVE PHOTO TO TV SCREEN: Bind activePhotoTex directly to 16:9 wall frame model
+    Mesh photoMesh = GenMeshPlane(6.4f, 3.6f, 1, 1);
     Model photoModel = LoadModelFromMesh(photoMesh);
     SetMaterialTexture(&photoModel.materials[0], MATERIAL_MAP_DIFFUSE, activePhotoTex);
 
@@ -288,7 +285,7 @@ int main() {
             // Begin 3D Scene Rendering
             BeginMode3D(camera);
 
-                // Solid models (NO WIREFRAME DRAW CALLS)
+                // 1. NO HIGHLIGHT BOXES / NO WIREFRAME DRAW CALLS AROUND ANY CHARACTER BODY
                 DrawModel(floorModel, Vector3{ 0.0f, 0.0f, 0.0f }, 1.0f, WHITE);
                 DrawModelEx(wallModel, Vector3{ 0.0f, 5.0f, -8.0f }, Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, Vector3{ 1.0f, 1.0f, 1.0f }, WHITE);
 
@@ -299,8 +296,8 @@ int main() {
                 DrawCylinder(Vector3{ -1.5f, 0.0f, -1.4f }, 0.08f, 0.08f, 0.3f, 8, Color{ 35, 25, 20, 255 });
                 DrawCylinder(Vector3{  1.5f, 0.0f, -1.4f }, 0.08f, 0.08f, 0.3f, 8, Color{ 35, 25, 20, 255 });
 
-                // 2. BIND ACTIVE PHOTO TO TV FRAME: Render 16:9 TV Display model with activePhotoTex
-                DrawCube(centerPhotoPlanePos, 6.3f, 3.675f, 0.12f, Color{ 16, 22, 34, 255 });
+                // 3. BIND ACTIVE PHOTO TO TV SCREEN: 16:9 Wall TV displaying activePhotoTex
+                DrawCube(centerPhotoPlanePos, 6.6f, 3.8f, 0.12f, Color{ 16, 22, 34, 255 });
                 DrawModelEx(photoModel, Vector3{ centerPhotoPlanePos.x, centerPhotoPlanePos.y, centerPhotoPlanePos.z + 0.07f },
                             Vector3{ 1.0f, 0.0f, 0.0f }, 90.0f, Vector3{ 1.0f, 1.0f, 1.0f }, WHITE);
 
@@ -308,7 +305,7 @@ int main() {
                 rlDisableDepthMask();
 
                 // -------------------------------------------------------------
-                // 1. INSET FRAME RECTANGLES (CROP BAKED-IN BORDER LINES)
+                // 2. ELEVATE MILO & SAM Y-POSITIONS (NO BODY HIGHLIGHT BOXES)
                 // -------------------------------------------------------------
                 float frameW_sky   = (float)skySheet.width / 3.0f;
                 float frameH_sky   = (float)skySheet.height / 3.0f;
@@ -319,48 +316,47 @@ int main() {
                 float frameW_frank = (float)frankSheet.width / 3.0f;
                 float frameH_frank = (float)frankSheet.height / 3.0f;
 
-                // 3.0f pixel inset crops out the baked-in grid border lines on sprite sheet frames
-                float inset = 3.0f;
+                float inset = 3.0f; // 3.0f pixel inset crops out baked-in grid border lines
                 float floatOffset = sinf(globalTime * 2.2f) * 0.04f;
 
-                // Sky (Yellow Shirt - Left Inner, Elevated Y = 1.55f)
-                Rectangle skySrc = {
-                    (float)(currentFrame % 3) * frameW_sky + inset,
-                    (float)(currentFrame / 3) * frameH_sky + inset,
-                    frameW_sky - (inset * 2.0f),
-                    frameH_sky - (inset * 2.0f)
-                };
-                Vector3 skyPos = { -1.8f, 1.55f + floatOffset, -4.2f };
-                DrawBillboardRec(camera, skySheet, skySrc, skyPos, Vector2{ 2.0f, 2.5f }, WHITE);
-
-                // Sam (Green Shirt - Right Inner, Elevated Y = 1.55f)
-                Rectangle samSrc = {
-                    (float)(currentFrame % 3) * frameW_sam + inset,
-                    (float)(currentFrame / 3) * frameH_sam + inset,
-                    frameW_sam - (inset * 2.0f),
-                    frameH_sam - (inset * 2.0f)
-                };
-                Vector3 samPos = { 1.8f, 1.55f + floatOffset, -4.2f };
-                DrawBillboardRec(camera, samSheet, samSrc, samPos, Vector2{ 2.0f, 2.5f }, WHITE);
-
-                // Milo (Blue Hoodie - Far Left)
+                // Milo (Far Left - Elevated by +0.35f to Y = 1.80f so torso/waist sit above floor plane)
                 Rectangle miloSrc = {
                     (float)(currentFrame % 3) * frameW_milo + inset,
                     (float)(currentFrame / 3) * frameH_milo + inset,
                     frameW_milo - (inset * 2.0f),
                     frameH_milo - (inset * 2.0f)
                 };
-                Vector3 miloPos = { -3.5f, 1.25f + floatOffset, -3.0f };
+                Vector3 miloPos = { -3.2f, 1.80f + floatOffset, -2.0f };
                 DrawBillboardRec(camera, miloSheet, miloSrc, miloPos, Vector2{ 2.0f, 2.5f }, WHITE);
 
-                // Frank (Peach Sweater - Far Right, FLIPPED HORIZONTALLY WITH NEGATIVE INSET WIDTH)
+                // Sky (Mid Left - Y = 1.55f)
+                Rectangle skySrc = {
+                    (float)(currentFrame % 3) * frameW_sky + inset,
+                    (float)(currentFrame / 3) * frameH_sky + inset,
+                    frameW_sky - (inset * 2.0f),
+                    frameH_sky - (inset * 2.0f)
+                };
+                Vector3 skyPos = { -1.5f, 1.55f + floatOffset, -3.8f };
+                DrawBillboardRec(camera, skySheet, skySrc, skyPos, Vector2{ 2.0f, 2.5f }, WHITE);
+
+                // Sam (Mid Right - Y = 1.55f so lower half sits cleanly behind coffee table back edge)
+                Rectangle samSrc = {
+                    (float)(currentFrame % 3) * frameW_sam + inset,
+                    (float)(currentFrame / 3) * frameH_sam + inset,
+                    frameW_sam - (inset * 2.0f),
+                    frameH_sam - (inset * 2.0f)
+                };
+                Vector3 samPos = { 1.5f, 1.55f + floatOffset, -3.8f };
+                DrawBillboardRec(camera, samSheet, samSrc, samPos, Vector2{ 2.0f, 2.5f }, WHITE);
+
+                // Frank (Far Right - Y = 1.45f)
                 Rectangle frankSrc = {
-                    ((float)(currentFrame % 3) + 1.0f) * frameW_frank - inset,
+                    (float)(currentFrame % 3) * frameW_frank + inset,
                     (float)(currentFrame / 3) * frameH_frank + inset,
-                    -(frameW_frank - (inset * 2.0f)), // Negative width mirrors sprite to face inward
+                    frameW_frank - (inset * 2.0f),
                     frameH_frank - (inset * 2.0f)
                 };
-                Vector3 frankPos = { 3.5f, 1.25f + floatOffset, -3.0f };
+                Vector3 frankPos = { 3.2f, 1.45f + floatOffset, -2.0f };
                 DrawBillboardRec(camera, frankSheet, frankSrc, frankPos, Vector2{ 2.0f, 2.5f }, WHITE);
 
                 // Restore depth mask writing
@@ -369,13 +365,12 @@ int main() {
             EndMode3D();
 
             // ---------------------------------------------------------
-            // SCREEN-SPACE HUD OVERLAYS (GetWorldToScreen Tracking)
+            // SCREEN-SPACE HUD OVERLAYS (NO SPEAKER BODY HIGHLIGHT BOXES)
             // ---------------------------------------------------------
             
             // Top Center Clock Badge
             Rectangle clockRect = { CANVAS_WIDTH / 2.0f - 150.0f, 25.0f, 300.0f, 44.0f };
             DrawRectangleRounded(clockRect, 0.45f, 6, Color{ 12, 16, 28, 235 });
-            DrawRectangleRoundedLines(clockRect, 0.45f, 6, 1.5f, Color{ 255, 255, 255, 60 });
             std::string clockText = localState.timeStr + "  |  " + localState.weatherStr;
             int clockTextW = MeasureText(clockText.c_str(), 18);
             DrawText(clockText.c_str(), (int)(CANVAS_WIDTH / 2.0f - clockTextW / 2.0f), (int)(clockRect.y + 12.0f), 18, Color{ 245, 248, 255, 255 });
@@ -385,7 +380,6 @@ int main() {
             std::string actionBadge = "[" + localState.emotion + "] " + localState.action;
             Rectangle actionRect = { CANVAS_WIDTH / 2.0f - 160.0f, CANVAS_HEIGHT - 75.0f, 320.0f, 36.0f };
             DrawRectangleRounded(actionRect, 0.45f, 6, Color{ 12, 16, 28, 235 });
-            DrawRectangleRoundedLines(actionRect, 0.45f, 6, 1.5f, ColorAlpha(activeColor, 0.9f));
             int actionTextW = MeasureText(actionBadge.c_str(), 16);
             DrawText(actionBadge.c_str(), (int)(CANVAS_WIDTH / 2.0f - actionTextW / 2.0f), (int)(actionRect.y + 9.0f), 16, Color{ 245, 248, 255, 255 });
 
@@ -418,7 +412,6 @@ int main() {
                 Vector2 tagScreenPos = GetWorldToScreen(tagWorldPos, camera);
                 Rectangle tagRect = { tagScreenPos.x - (tagW / 2.0f) - 10, tagScreenPos.y, (float)tagW + 20, 26 };
                 DrawRectangleRounded(tagRect, 0.45f, 4, Color{ 12, 16, 28, 220 });
-                DrawRectangleRoundedLines(tagRect, 0.45f, 4, 1.2f, ColorAlpha(d.color, 0.8f));
                 DrawText(tagText.c_str(), (int)(tagScreenPos.x - tagW / 2.0f), (int)(tagRect.y + 4), 16, WHITE);
             }
 
